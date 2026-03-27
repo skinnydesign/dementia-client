@@ -1,0 +1,39 @@
+/* ═══════════════════════════════════════════════════════
+   CONTROL — animations & scrollbar only
+   Layout and components are handled by Tailwind CSS
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+/* ── Keyframes ──────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Animation utility classes ──────────────────────── */
+.animate-pulse-dot {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 0.8s linear infinite;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.25s ease;
+}

@@ -1,0 +1,36 @@
+<div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden h-full flex flex-col">
+  <div class="flex items-center px-4 py-3 border-b border-[#2a2a2a] flex-shrink-0">
+    <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">TODOS</span>
+  </div>
+  <div id="todo-list" class="p-4 flex-1 overflow-y-auto">
+    <p class="font-mono text-xs text-[#666666]">Loading…</p>
+  </div>
+</div>
+<script>
+(function() {
+  async function load() {
+    const res  = await fetch('/api/todos');
+    const data = await res.json();
+    const list = document.getElementById('todo-list');
+    if (!data.ok) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">Error: ${data.message}</p>`; return; }
+    const pending = data.todos.filter(t => !t.completed);
+    if (!pending.length) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">No pending todos.</p>`; return; }
+    list.innerHTML = pending.map(t => `
+      <div class="flex items-center gap-3 py-2 border-b border-[#1e1e1e] last:border-0" id="todo-${t.id}">
+        <input type="checkbox" onchange="widgetCompleteTodo(${t.id})"
+               class="accent-amber-500 w-4 h-4 flex-shrink-0 cursor-pointer">
+        <span class="font-mono text-sm text-[#e8e8e8]">${t.todo}</span>
+      </div>
+    `).join('');
+  }
+
+  window.widgetCompleteTodo = async function(id) {
+    await fetch(`/api/todos/${id}/complete`, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'}
+    });
+    load();
+  };
+
+  document.addEventListener('DOMContentLoaded', load);
+})();
+</script>

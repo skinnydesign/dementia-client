@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% block title %}WiFi Setup{% endblock %}
+
+{% block auth_content %}
+<div class="relative w-screen h-screen flex items-center justify-center bg-surface overflow-hidden">
+
+  <!-- Grid-lines background -->
+  <div class="absolute inset-0 pointer-events-none"
+       style="background-image: linear-gradient(#2a2a2a 1px, transparent 1px), linear-gradient(90deg, #2a2a2a 1px, transparent 1px);
+              background-size: 40px 40px;
+              opacity: 0.35;">
+  </div>
+  <div class="absolute inset-0 pointer-events-none"
+       style="background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 40%, #0a0a0a 100%);">
+  </div>
+
+  <!-- Card -->
+  <div class="relative z-10 w-full max-w-sm mx-4">
+    <div class="bg-panel border border-[#2a2a2a] rounded-lg p-8 shadow-2xl">
+
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <div class="text-amber-500 text-4xl leading-none mb-4">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+            <line x1="12" y1="20" x2="12.01" y2="20"/>
+          </svg>
+        </div>
+        <h1 class="font-mono text-sm font-bold tracking-[0.2em] text-[#e8e8e8] mb-2">WIFI SETUP</h1>
+        <p class="text-[#666666] text-sm">Connect this device to your network</p>
+      </div>
+
+      <!-- Status -->
+      <div id="wifi-status" class="hidden mb-5 px-4 py-3 rounded text-sm font-mono"></div>
+
+      <!-- Scan button -->
+      <button id="scan-btn" onclick="scanWifi()"
+              class="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-black
+                     font-mono text-xs font-bold tracking-[0.12em] py-3 rounded transition-colors duration-150 mb-5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <span>SCAN FOR NETWORKS</span>
+      </button>
+
+      <!-- Loading spinner -->
+      <div id="wifi-loading" class="hidden flex items-center justify-center gap-2 py-4 mb-2">
+        <span class="w-4 h-4 border-2 border-[#2a2a2a] border-t-amber-500 rounded-full animate-spin-slow inline-block"></span>
+        <span class="font-mono text-xs text-[#666666]">Scanning…</span>
+      </div>
+
+      <!-- Network list -->
+      <div id="wifi-list" class="flex flex-col gap-1 mb-4"></div>
+
+      <!-- Connect form -->
+      <form id="connect-form" class="hidden flex flex-col gap-4">
+        <div class="p-3 bg-raised border border-[#2a2a2a] rounded">
+          <p class="font-mono text-[10px] tracking-widest text-[#666666] mb-1">CONNECTING TO</p>
+          <p id="connect-ssid-label" class="font-mono text-sm text-amber-500"></p>
+        </div>
+        <div id="password-group">
+          <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-1.5">PASSWORD</label>
+          <input type="password" id="wifi-password"
+                 class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#e8e8e8] font-mono
+                        placeholder-[#666666] focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
+                 placeholder="Network password">
+        </div>
+        <div class="flex gap-2">
+          <button type="button" onclick="doConnect()"
+                  class="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-mono text-xs font-bold tracking-widest py-2.5 rounded transition-colors">
+            CONNECT
+          </button>
+          <button type="button" onclick="cancelConnect()"
+                  class="font-mono text-xs tracking-widest text-[#666666] border border-[#2a2a2a] px-4 py-2.5 rounded hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors">
+            CANCEL
+          </button>
+        </div>
+      </form>
+
+      <!-- Back to login -->
+      <div class="mt-6 pt-5 border-t border-[#2a2a2a] text-center">
+        <a href="{{ url_for('login') }}"
+           class="font-mono text-xs text-[#666666] hover:text-[#e8e8e8] transition-colors">
+          ← Back to sign in
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedSsid = '';
+let selectedSecurity = '';
+
+async function scanWifi() {
+  const btn     = document.getElementById('scan-btn');
+  const loading = document.getElementById('wifi-loading');
+  const list    = document.getElementById('wifi-list');
+
+  btn.disabled = true;
+  btn.querySelector('span').textContent = 'SCANNING…';
+  loading.style.display = 'flex';
+  list.innerHTML = '';
+  cancelConnect();
+  setStatus('', '');
+
+  try {
+    const res  = await fetch('/api/wifi/scan');
+    const nets = await res.json();
+    loading.style.display = 'none';
+
+    if (!nets.length) {
+      list.innerHTML = '<p class="font-mono text-xs text-[#666666] text-center py-3">No networks found.</p>';
+      return;
+    }
+
+    list.innerHTML = nets.map(n => `
+      <button type="button"
+              onclick="selectNetwork('${n.ssid.replace(/'/g,"\\'")}', '${n.security}')"
+              class="w-full flex items-center gap-3 px-3 py-2.5 rounded border border-[#2a2a2a] hover:border-[#3a3a3a] hover:bg-raised transition-colors text-left ${n.in_use ? 'border-green-500/30 bg-green-500/5' : ''}">
+        <div class="flex flex-col gap-0.5 flex-shrink-0">
+          ${signalBars(n.bars)}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-mono text-xs text-[#e8e8e8] truncate">${n.ssid}</p>
+          <p class="font-mono text-[10px] text-[#666666]">${n.security}${n.in_use ? ' · CONNECTED' : ''}</p>
+        </div>
+        ${n.in_use ? '<span class="font-mono text-[10px] text-green-500">✓</span>' : '<span class="font-mono text-[10px] text-[#666666]">JOIN →</span>'}
+      </button>
+    `).join('');
+  } catch(e) {
+    loading.style.display = 'none';
+    setStatus('Scan failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('span').textContent = 'SCAN FOR NETWORKS';
+  }
+}
+
+function signalBars(bars) {
+  const heights = ['h-1', 'h-2', 'h-3', 'h-4'];
+  return '<div class="flex items-end gap-0.5">' +
+    [1,2,3,4].map((b, i) =>
+      `<span class="w-1 ${heights[i]} rounded-sm ${b <= bars ? 'bg-amber-500' : 'bg-[#3a3a3a]'}"></span>`
+    ).join('') +
+  '</div>';
+}
+
+function selectNetwork(ssid, security) {
+  selectedSsid     = ssid;
+  selectedSecurity = security;
+  document.getElementById('connect-ssid-label').textContent = ssid;
+  document.getElementById('password-group').style.display   = security !== 'Open' ? 'block' : 'none';
+  document.getElementById('connect-form').style.display     = 'flex';
+  document.getElementById('connect-form').classList.remove('hidden');
+  if (security !== 'Open') document.getElementById('wifi-password').focus();
+}
+
+function cancelConnect() {
+  selectedSsid = '';
+  document.getElementById('connect-form').classList.add('hidden');
+  document.getElementById('wifi-password').value = '';
+}
+
+async function doConnect() {
+  const password = document.getElementById('wifi-password').value;
+  setStatus('Connecting…', 'info');
+
+  try {
+    const res  = await fetch('/api/wifi/connect', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ssid: selectedSsid, password})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setStatus('Connected to ' + selectedSsid + '. You can now sign in.', 'success');
+      cancelConnect();
+      document.getElementById('wifi-list').innerHTML = '';
+    } else {
+      setStatus('Failed: ' + (data.message || 'Unknown error'), 'error');
+    }
+  } catch(e) {
+    setStatus('Connection error: ' + e.message, 'error');
+  }
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('wifi-status');
+  if (!msg) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden', 'bg-red-500/10', 'border-red-500/25', 'text-red-500',
+                                'bg-green-500/10', 'border-green-500/25', 'text-green-500',
+                                'bg-blue-500/10', 'border-blue-500/25', 'text-[#e8e8e8]');
+  const styles = {
+    error:   ['bg-red-500/10',  'border', 'border-red-500/25',  'text-red-500'],
+    success: ['bg-green-500/10','border', 'border-green-500/25','text-green-500'],
+    info:    ['bg-raised',      'border', 'border-[#2a2a2a]',   'text-[#666666]'],
+  };
+  (styles[type] || styles.info).forEach(c => el.classList.add(c));
+  el.textContent = msg;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+<div class="flex flex-col items-center justify-center h-full py-8 px-4">
+  <div id="clock-time" class="font-mono text-6xl font-bold text-[#e8e8e8] tracking-tight leading-none mb-3">00:00:00</div>
+  <div id="clock-date" class="font-mono text-sm text-[#666666] tracking-wide"></div>
+</div>
+<script>
+(function() {
+  function tick() {
+    const now  = new Date();
+    const time = now.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    const day  = now.toLocaleDateString(undefined, {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
+    document.getElementById('clock-time').textContent = time;
+    document.getElementById('clock-date').textContent = day;
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>

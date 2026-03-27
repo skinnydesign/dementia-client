@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}Todos{% endblock %}
+{% block page_title %}TODOS{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4 p-6 max-w-3xl">
+
+  <!-- Todos panel -->
+  <div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-[#2a2a2a]">
+      <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">MY TODOS</span>
+    </div>
+    <div class="p-5">
+      <div id="todo-list"><p class="font-mono text-xs text-[#666666]">Loading…</p></div>
+    </div>
+  </div>
+
+  <!-- iCal panel -->
+  <div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden" id="ical-panel">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-[#2a2a2a]">
+      <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">UPCOMING EVENTS</span>
+      <span id="ical-days-label" class="font-mono text-xs text-[#666666]"></span>
+    </div>
+    <div class="p-5">
+      <div id="ical-list"><p class="font-mono text-xs text-[#666666]">Loading…</p></div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadTodos() {
+  const res  = await fetch('/api/todos');
+  const data = await res.json();
+  const list = document.getElementById('todo-list');
+  if (!data.ok) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">Error: ${data.message}</p>`; return; }
+  const pending = data.todos.filter(t => !t.completed);
+  if (!pending.length) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">No pending todos.</p>`; return; }
+  list.innerHTML = pending.map(t => `
+    <div class="flex items-center gap-3 py-2 border-b border-[#1e1e1e] last:border-0" id="todo-${t.id}">
+      <input type="checkbox" onchange="completeTodo(${t.id})"
+             class="accent-amber-500 w-4 h-4 flex-shrink-0 cursor-pointer">
+      <span class="font-mono text-sm text-[#e8e8e8]">${t.todo}</span>
+    </div>
+  `).join('');
+}
+
+async function completeTodo(id) {
+  await fetch(`/api/todos/${id}/complete`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'}
+  });
+  loadTodos();
+}
+
+async function loadIcal() {
+  const res  = await fetch('/api/ical');
+  const data = await res.json();
+  const list = document.getElementById('ical-list');
+
+  if (!data.ok) {
+    list.innerHTML = `<p class="font-mono text-xs text-[#666666]">Error: ${data.message}</p>`;
+    return;
+  }
+
+  document.getElementById('ical-days-label').textContent = `NEXT ${data.ical_days} DAYS`;
+
+  if (!data.events.length) {
+    list.innerHTML = `<p class="font-mono text-xs text-[#666666]">No upcoming events.</p>`;
+    return;
+  }
+
+  list.innerHTML = data.events.map(e => `
+    <div class="flex items-center justify-between gap-4 py-2 border-b border-[#1e1e1e] last:border-0">
+      <div class="flex-1 min-w-0">
+        <span class="font-mono text-sm text-[#e8e8e8]">${e.summary}</span>
+        ${e.location ? `<span class="font-mono text-xs text-[#666666] ml-2">@ ${e.location}</span>` : ''}
+      </div>
+      <span class="font-mono text-xs text-[#666666] flex-shrink-0">${formatEventDate(e.date, e.end)}</span>
+    </div>
+  `).join('');
+}
+
+function formatEventDate(start, end) {
+  const s = new Date(start + 'T00:00:00');
+  const opts = { month: 'short', day: 'numeric' };
+  if (!end || end === start) return s.toLocaleDateString(undefined, opts);
+  const e = new Date(end + 'T00:00:00');
+  return `${s.toLocaleDateString(undefined, opts)} – ${e.toLocaleDateString(undefined, opts)}`;
+}
+
+document.addEventListener('DOMContentLoaded', () => { loadTodos(); loadIcal(); });
+</script>
+{% endblock %}

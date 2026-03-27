@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Sign In{% endblock %}
+
+{% block auth_content %}
+<div class="relative w-screen h-screen flex items-center justify-center bg-surface overflow-hidden">
+
+  <!-- Grid-lines background -->
+  <div class="absolute inset-0 pointer-events-none"
+       style="background-image: linear-gradient(#2a2a2a 1px, transparent 1px), linear-gradient(90deg, #2a2a2a 1px, transparent 1px);
+              background-size: 40px 40px;
+              opacity: 0.35;">
+  </div>
+  <!-- Radial fade overlay so grid fades toward edges -->
+  <div class="absolute inset-0 pointer-events-none"
+       style="background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 40%, #0a0a0a 100%);">
+  </div>
+
+  <!-- Login card -->
+  <div class="relative z-10 w-full max-w-sm mx-4">
+    <div class="bg-panel border border-[#2a2a2a] rounded-lg p-8 shadow-2xl">
+
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <div class="text-amber-500 text-4xl leading-none mb-4">⬡</div>
+        <h1 class="font-mono text-sm font-bold tracking-[0.2em] text-[#e8e8e8] mb-2">CONTROL PANEL</h1>
+        <p class="text-[#666666] text-sm">Sign in to access your workspace</p>
+      </div>
+
+      {% if error %}
+        <div class="mb-6 px-4 py-3 bg-red-500/10 border border-red-500/25 rounded text-red-500 text-sm">
+          {{ error }}
+        </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('login') }}" class="flex flex-col gap-5">
+        <div>
+          <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-2">EMAIL ADDRESS</label>
+          <input type="email" name="email"
+                 class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#e8e8e8] font-mono
+                        placeholder-[#666666] focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
+                 placeholder="you@example.com" autocomplete="email" required>
+        </div>
+
+        <div>
+          <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-2">PASSWORD</label>
+          <input type="password" name="password"
+                 class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#e8e8e8] font-mono
+                        placeholder-[#666666] focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
+                 placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+
+        <button type="submit"
+                class="flex items-center justify-center gap-2 w-full bg-amber-500 hover:bg-amber-400 text-black
+                       font-mono text-xs font-bold tracking-[0.12em] py-3 rounded transition-colors duration-150 mt-1">
+          <span>CONNECT</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </form>
+
+      <p class="font-mono text-[10px] text-[#666666] text-center leading-relaxed mt-6">
+        Authentication is validated against the Laravel API.<br>A valid subscription is required.
+      </p>
+
+      <div class="mt-5 pt-5 border-t border-[#2a2a2a] text-center">
+        <a href="{{ url_for('wifi_setup') }}"
+           class="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-[#666666] hover:text-[#e8e8e8] transition-colors">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+            <line x1="12" y1="20" x2="12.01" y2="20"/>
+          </svg>
+          WIFI SETUP
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}DASHBOARD{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-3 p-4 h-full">
+
+  {% if layout.top_bar %}
+  <div class="w-full" id="slot-top_bar">
+    {% include 'widgets/' + layout.top_bar + '.html' %}
+  </div>
+  {% endif %}
+
+  {% if layout.top_left or layout.top_center or layout.top_right %}
+  <div class="grid grid-cols-3 gap-3">
+    <div id="slot-top_left">
+      {% if layout.top_left %}{% include 'widgets/' + layout.top_left + '.html' %}{% endif %}
+    </div>
+    <div id="slot-top_center">
+      {% if layout.top_center %}{% include 'widgets/' + layout.top_center + '.html' %}{% endif %}
+    </div>
+    <div id="slot-top_right">
+      {% if layout.top_right %}{% include 'widgets/' + layout.top_right + '.html' %}{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if layout.upper_third %}
+  <div class="w-full" id="slot-upper_third">
+    {% include 'widgets/' + layout.upper_third + '.html' %}
+  </div>
+  {% endif %}
+
+  {% if layout.middle_center %}
+  <div class="w-full flex-1" id="slot-middle_center">
+    {% include 'widgets/' + layout.middle_center + '.html' %}
+  </div>
+  {% endif %}
+
+  {% if layout.lower_third %}
+  <div class="w-full" id="slot-lower_third">
+    {% include 'widgets/' + layout.lower_third + '.html' %}
+  </div>
+  {% endif %}
+
+  {% if layout.bottom_left or layout.bottom_center or layout.bottom_right %}
+  <div class="grid grid-cols-3 gap-3">
+    <div id="slot-bottom_left">
+      {% if layout.bottom_left %}{% include 'widgets/' + layout.bottom_left + '.html' %}{% endif %}
+    </div>
+    <div id="slot-bottom_center">
+      {% if layout.bottom_center %}{% include 'widgets/' + layout.bottom_center + '.html' %}{% endif %}
+    </div>
+    <div id="slot-bottom_right">
+      {% if layout.bottom_right %}{% include 'widgets/' + layout.bottom_right + '.html' %}{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if layout.bottom_bar %}
+  <div class="w-full" id="slot-bottom_bar">
+    {% include 'widgets/' + layout.bottom_bar + '.html' %}
+  </div>
+  {% endif %}
+
+  {% set all_empty = not (layout.top_bar or layout.top_left or layout.top_center or layout.top_right
+    or layout.upper_third or layout.middle_center or layout.lower_third
+    or layout.bottom_left or layout.bottom_center or layout.bottom_right or layout.bottom_bar) %}
+  {% if all_empty %}
+  <div class="flex-1 flex flex-col items-center justify-center gap-3 text-center py-20">
+    <p class="font-mono text-xs tracking-widest text-[#666666]">NO WIDGETS CONFIGURED</p>
+    <p class="text-[#666666] text-sm">Set your layout via the API: <code class="font-mono text-amber-500 bg-raised px-1.5 py-0.5 rounded text-xs">PUT /api/layout</code></p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

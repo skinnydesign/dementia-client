@@ -1,0 +1,21 @@
+services:
+  python:
+    build: .
+    volumes:
+      - ./app:/app
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./data:/data
+    env_file:
+      - .env
+    environment:
+      - DATA_DIR=/data
+    networks:
+      - proxy
+    expose:
+      - "8000"
+    command: gunicorn --reload -w 2 -b 0.0.0.0:8000 app:app
+
+networks:
+  proxy:
+    external: true
