@@ -13,27 +13,33 @@
     const res  = await fetch('/api/ical');
     const data = await res.json();
     const list = document.getElementById('ical-list');
-    if (!data.ok) { list.innerHTML = `<p class="dim mono">Error: ${data.message}</p>`; return; }
+    if (!data.ok) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">Error: ${data.message}</p>`; return; }
     document.getElementById('ical-days-label').textContent = `NEXT ${data.ical_days} DAYS`;
-    if (!data.events.length) { list.innerHTML = `<p class="dim mono">No upcoming events.</p>`; return; }
+    if (!data.events.length) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">No upcoming events.</p>`; return; }
     list.innerHTML = data.events.map(e => `
-      <div class="todo-row">
-      ${data}
-        <span class="mono dim">${formatDate(e.date, e.end)}</span>
-        <div style="flex:1">
-          <span>${e.summary}</span>
-          ${e.location ? `<span class="mono dim" style="margin-left:.5rem">@ ${e.location}</span>` : ''}
+      <div class="flex items-center justify-between gap-4 py-2 border-b border-[#1e1e1e] last:border-0">
+        <span class="font-mono text-xs text-[#999999] flex-shrink-0">${formatDate(e.date, e.end, e.time, e.end_time)}</span>
+        <div class="flex-1 min-w-0">
+          <span class="font-mono text-sm text-[#e8e8e8]">${e.summary}</span>
+          ${e.location ? `<span class="font-mono text-xs text-[#666666] ml-2">@ ${e.location}</span>` : ''}
         </div>
+        
       </div>
     `).join('');
   }
 
-  function formatDate(start, end) {
+  function formatDate(start, end, time, endTime) {
     const s    = new Date(start + 'T00:00:00');
     const opts = {month: 'short', day: 'numeric'};
-    if (!end || end === start) return s.toLocaleDateString(undefined, opts);
-    const e = new Date(end + 'T00:00:00');
-    return `${s.toLocaleDateString(undefined, opts)} – ${e.toLocaleDateString(undefined, opts)}`;
+    const dateStr = s.toLocaleDateString(undefined, opts);
+    if (!end || end === start) {
+      return time ? `${dateStr} ${time}` : dateStr;
+    }
+    const e      = new Date(end + 'T00:00:00');
+    const endStr = e.toLocaleDateString(undefined, opts);
+    if (time && endTime) return `${dateStr} ${time} – ${endStr} ${endTime}`;
+    if (time)            return `${dateStr} ${time} – ${endStr}`;
+    return `${dateStr} – ${endStr}`;
   }
 
   document.addEventListener('DOMContentLoaded', load);

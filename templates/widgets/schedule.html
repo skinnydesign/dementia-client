@@ -1,0 +1,38 @@
+<div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden h-full flex flex-col">
+  <div class="flex items-center px-4 py-3 border-b border-[#2a2a2a] flex-shrink-0">
+    <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">SCHEDULE</span>
+  </div>
+  <div id="schedule-list" class="p-4 flex-1 overflow-y-auto">
+    <p class="font-mono text-xs text-[#666666]">Loading…</p>
+  </div>
+</div>
+<script>
+(function() {
+  async function load() {
+    const res  = await fetch('/api/schedule/due');
+    const data = await res.json();
+    const list = document.getElementById('schedule-list');
+    if (!data.ok) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">Error loading schedule.</p>`; return; }
+    if (!data.items.length) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">Nothing due right now.</p>`; return; }
+    list.innerHTML = data.items.map(item => `
+      <div class="flex items-center gap-3 py-2 border-b border-[#1e1e1e] last:border-0" id="sched-${item.id}">
+        <input type="checkbox" onchange="widgetCompleteSchedule(${item.id})"
+               class="accent-amber-500 w-4 h-4 flex-shrink-0 cursor-pointer">
+        <div class="flex-1 min-w-0">
+          <p class="font-mono text-sm text-[#e8e8e8]">${item.name}</p>
+          <p class="font-mono text-[10px] text-[#666666]">${item.frequency} · ${item.scheduled_time}</p>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.widgetCompleteSchedule = async function(id) {
+    await fetch(`/api/schedule/${id}/complete`, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'}
+    });
+    load();
+  };
+
+  document.addEventListener('DOMContentLoaded', load);
+})();
+</script>
