@@ -100,6 +100,41 @@
     </div>
   </div>
 
+  <!-- ── Display ────────────────────────────────────────────────────────── -->
+  <div class="col-span-2 bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#2a2a2a]">
+      <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">DISPLAY</span>
+    </div>
+    <div class="p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">FONT SIZE</p>
+          <p class="text-[#666666] text-xs">Current: <span id="font-size-label">15px</span></p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="adjustFontSize(-1)"
+                  class="w-9 h-9 rounded border border-[#2a2a2a] bg-raised flex items-center justify-center
+                         text-[#e8e8e8] font-mono font-bold hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+                  title="Decrease font size">
+            <span class="text-base leading-none">A−</span>
+          </button>
+          <button onclick="adjustFontSize(0)"
+                  class="h-9 px-3 rounded border border-[#2a2a2a] bg-raised
+                         font-mono text-[10px] tracking-widest text-[#666666] hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors"
+                  title="Reset to default">
+            RESET
+          </button>
+          <button onclick="adjustFontSize(1)"
+                  class="w-9 h-9 rounded border border-[#2a2a2a] bg-raised flex items-center justify-center
+                         text-[#e8e8e8] font-mono font-bold hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+                  title="Increase font size">
+            <span class="text-lg leading-none">A+</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Modules ─────────────────────────────────────────────────────────── -->
   <div class="col-span-2 bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden">
     <div class="px-5 py-3 border-b border-[#2a2a2a]">
@@ -146,6 +181,24 @@
 
 {% block scripts %}
 <script>
+const FONT_MIN = 11;
+const FONT_MAX = 24;
+const FONT_DEFAULT = 15;
+
+function adjustFontSize(delta) {
+  const current = parseInt(localStorage.getItem('fontSize') || FONT_DEFAULT, 10);
+  const next = delta === 0 ? FONT_DEFAULT : Math.min(FONT_MAX, Math.max(FONT_MIN, current + delta));
+  localStorage.setItem('fontSize', next);
+  document.documentElement.style.fontSize = next + 'px';
+  document.getElementById('font-size-label').textContent = next + 'px';
+}
+
+// Set label to current value on load
+(function() {
+  const sz = parseInt(localStorage.getItem('fontSize') || FONT_DEFAULT, 10);
+  document.getElementById('font-size-label').textContent = sz + 'px';
+})();
+
 async function scanWifi() {
   const btn     = document.getElementById('scan-btn');
   const list    = document.getElementById('wifi-list');

@@ -27,6 +27,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script>
+  // Apply saved font size before first paint to avoid flash
+  (function() {
+    var sz = parseInt(localStorage.getItem('fontSize') || '15', 10);
+    document.documentElement.style.fontSize = sz + 'px';
+  })();
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -52,7 +59,7 @@
   }
 </script>
 </head>
-<body class="bg-surface text-[#e8e8e8] font-sans text-[15px] leading-relaxed overflow-hidden w-full h-full">
+<body class="bg-surface text-[#e8e8e8] font-sans text-[1rem] leading-relaxed overflow-hidden w-full h-full">
 
 {% if session.get('api_token') %}
 <div class="w-screen h-screen overflow-hidden relative">
