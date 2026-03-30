@@ -113,8 +113,13 @@ def _pull_schedule(base: str, headers: dict) -> None:
     try:
         r = requests.get(f"{base}/schedule", headers=headers, timeout=10)
         if r.status_code == 200:
-            data = r.json()
-            db.upsert_schedule(data.get("items", []))
+            data  = r.json()
+            items = data.get("items", [])
+            db.upsert_schedule(items)
+            # Sync completion history for each item
+            for item in items:
+                if item.get("completions"):
+                    db.upsert_completions(item["id"], item["completions"])
     except Exception as e:
         log.warning(f"Schedule sync failed: {e}")
 

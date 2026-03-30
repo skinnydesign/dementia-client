@@ -69,6 +69,16 @@ def init_db() -> None:
                 data TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS schedule_completions (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                laravel_id   INTEGER,
+                schedule_id  INTEGER NOT NULL,
+                completed_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_completions_schedule
+                ON schedule_completions (schedule_id, completed_at DESC);
+
             CREATE TABLE IF NOT EXISTS sync_queue (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 action     TEXT NOT NULL,
@@ -159,10 +169,37 @@ def upsert_schedule(items: list[dict]) -> None:
 
 
 def complete_schedule_locally(item_id: int) -> None:
+    now = datetime.now().isoformat(sep=" ", timespec="seconds")
     with get_db() as conn:
         conn.execute(
-            "UPDATE schedule_items SET last_completed_at = datetime('now') WHERE id = ?",
-            (item_id,)
+            "UPDATE schedule_items SET last_completed_at = ? WHERE id = ?",
+            (now, item_id)
+        )
+        conn.execute(
+            "INSERT INTO schedule_completions (schedule_id, completed_at) VALUES (?, ?)",
+            (item_id, now)
+        )
+
+
+def get_completions(schedule_id: int) -> list[dict]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM schedule_completions WHERE schedule_id = ? ORDER BY completed_at DESC LIMIT 20",
+            (schedule_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def upsert_completions(schedule_id: int, completions: list[dict]) -> None:
+    """Replace completions for a schedule item with data from Laravel."""
+    with get_db() as conn:
+        conn.execute(
+            "DELETE FROM schedule_completions WHERE schedule_id = ? AND laravel_id IS NOT NULL",
+            (schedule_id,)
+        )
+        conn.executemany(
+            "INSERT OR IGNORE INTO schedule_completions (laravel_id, schedule_id, completed_at) VALUES (?, ?, ?)",
+            [(c["id"], schedule_id, c["completed_at"]) for c in completions]
         )
 
 
