@@ -132,6 +132,45 @@
     {% block content %}{% endblock %}
   </div>
 
+  <!-- Carer button — bottom-left corner -->
+  <button id="carer-btn" onclick="carerButtonClick()"
+     class="fixed bottom-5 left-5 z-50 h-10 px-4 rounded-full border flex items-center gap-2
+            font-mono text-xs font-bold tracking-widest transition-all duration-200 shadow-lg hidden"
+     title="Carer check-in / check-out">
+    <span id="carer-btn-icon"></span>
+    <span id="carer-btn-label"></span>
+  </button>
+
+  <!-- Carer check-in modal -->
+  <div id="carer-modal" class="hidden fixed inset-0 z-[9998] flex items-center justify-center bg-black/60">
+    <div class="bg-panel border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+      <h2 class="font-mono text-sm font-bold tracking-widest text-[#e8e8e8] mb-1">CARER CHECK-IN</h2>
+      <p class="text-[#666666] text-xs mb-5">Enter your name to record your arrival.</p>
+
+      <!-- Recent names -->
+      <div id="carer-recent" class="flex flex-wrap gap-2 mb-4 hidden"></div>
+
+      <!-- Name input -->
+      <input id="carer-name-input" type="text" placeholder="Your name"
+             class="w-full bg-raised border border-[#2a2a2a] rounded-lg px-4 py-3 text-[#e8e8e8] font-mono text-sm
+                    placeholder-[#444444] focus:outline-none focus:border-amber-500 transition-colors mb-4"
+             autocomplete="off">
+
+      <div class="flex gap-3">
+        <button onclick="carerCheckIn()"
+                class="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-mono text-xs font-bold tracking-widest
+                       py-3 rounded-lg transition-colors">
+          CHECK IN
+        </button>
+        <button onclick="closecCarerModal()"
+                class="px-4 rounded-lg border border-[#2a2a2a] font-mono text-xs text-[#666666]
+                       hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors">
+          CANCEL
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings cog — bottom-right corner -->
   <a href="{{ url_for('settings') }}"
      class="fixed bottom-5 right-5 z-50 w-10 h-10 rounded-full bg-panel border border-[#2a2a2a]
@@ -310,10 +349,118 @@
     sessionStorage.setItem('alerted_ids', JSON.stringify([...alerted]));
   }
 
+  // ── Carer button ─────────────────────────────────────────────────────────────
+
+  let activeVisit = null;
+
+  async function initCarerButton() {
+    try {
+      const res  = await fetch('/api/carer/status');
+      const data = await res.json();
+      if (!data.ok) return;
+
+      activeVisit = data.active_visit || null;
+      updateCarerButton();
+
+      // Populate recent names
+      if (data.recent_names && data.recent_names.length) {
+        const container = document.getElementById('carer-recent');
+        container.innerHTML = data.recent_names.map(name =>
+          `<button onclick="selectCarerName('${name.replace(/'/g, "\\'")}')"
+                   class="px-3 py-1 rounded-full border border-[#2a2a2a] bg-raised font-mono text-xs
+                          text-[#aaaaaa] hover:text-amber-500 hover:border-amber-500/50 transition-colors">
+             ${name}
+           </button>`
+        ).join('');
+        container.classList.remove('hidden');
+      }
+    } catch(e) {}
+  }
+
+  function updateCarerButton() {
+    const btn   = document.getElementById('carer-btn');
+    const icon  = document.getElementById('carer-btn-icon');
+    const label = document.getElementById('carer-btn-label');
+
+    if (activeVisit) {
+      btn.className = btn.className.replace(/hidden/, '');
+      btn.classList.remove('hidden');
+      btn.className = 'fixed bottom-5 left-5 z-50 h-10 px-4 rounded-full border flex items-center gap-2 font-mono text-xs font-bold tracking-widest transition-all duration-200 shadow-lg bg-amber-500/10 border-amber-500/50 text-amber-500 hover:bg-amber-500/20';
+      icon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+      label.textContent = 'LEAVING';
+      btn.title = `${activeVisit.carer_name} — tap to record departure`;
+    } else {
+      btn.classList.remove('hidden');
+      btn.className = 'fixed bottom-5 left-5 z-50 h-10 px-4 rounded-full border flex items-center gap-2 font-mono text-xs font-bold tracking-widest transition-all duration-200 shadow-lg bg-teal-500/10 border-teal-500/50 text-teal-400 hover:bg-teal-500/20';
+      icon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>';
+      label.textContent = 'CARER ARRIVED';
+      btn.title = 'Record carer arrival';
+    }
+  }
+
+  window.carerButtonClick = function() {
+    if (activeVisit) {
+      carerLeave();
+    } else {
+      document.getElementById('carer-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('carer-name-input').focus(), 50);
+    }
+  };
+
+  window.selectCarerName = function(name) {
+    document.getElementById('carer-name-input').value = name;
+    document.getElementById('carer-name-input').focus();
+  };
+
+  window.closecCarerModal = function() {
+    document.getElementById('carer-modal').classList.add('hidden');
+    document.getElementById('carer-name-input').value = '';
+  };
+
+  window.carerCheckIn = async function() {
+    const name = document.getElementById('carer-name-input').value.trim();
+    if (!name) {
+      document.getElementById('carer-name-input').focus();
+      return;
+    }
+    try {
+      const res  = await fetch('/api/carer/arrive', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({carer_name: name}),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        activeVisit = {id: data.local_id, carer_name: name, arrived_at: data.arrived_at};
+        updateCarerButton();
+        closecCarerModal();
+      }
+    } catch(e) {}
+  };
+
+  async function carerLeave() {
+    try {
+      const res  = await fetch('/api/carer/leave', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+      });
+      const data = await res.json();
+      if (data.ok) {
+        activeVisit = null;
+        updateCarerButton();
+      }
+    } catch(e) {}
+  }
+
+  // Allow Enter key in name input
+  document.getElementById('carer-name-input')
+    .addEventListener('keydown', e => { if (e.key === 'Enter') carerCheckIn(); });
+
   // ── Init ────────────────────────────────────────────────────────────────────
 
   checkAlert();
   checkSchedule();
+  initCarerButton();
   setInterval(checkAlert,    60000);
   setInterval(checkSchedule, 60000);
 

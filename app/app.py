@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import subprocess
+import time
 from datetime import datetime
 
 import requests
@@ -133,31 +134,67 @@ def laravel_put(path, payload):
 #  WIFI HELPERS
 # ─────────────────────────────────────────────────────────────
 
+WLAN_IFACE = "wlan0"
+
+
 def scan_wifi():
     OS = platform.system()
     networks = []
     try:
         if OS == "Linux":
-            result = subprocess.run(
-                ["nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY,IN-USE",
-                 "dev", "wifi", "list", "--rescan", "yes"],
-                capture_output=True, text=True, timeout=20
+            # Get current SSID so we can mark it as in-use
+            cur = subprocess.run(
+                ["iwgetid", WLAN_IFACE, "--raw"],
+                capture_output=True, text=True, timeout=5
             )
+            current_ssid = cur.stdout.strip()
+
+            # Trigger a fresh scan then wait for results
+            subprocess.run(
+                ["sudo", "wpa_cli", "-i", WLAN_IFACE, "scan"],
+                capture_output=True, timeout=5
+            )
+            time.sleep(2)
+
+            result = subprocess.run(
+                ["sudo", "wpa_cli", "-i", WLAN_IFACE, "scan_results"],
+                capture_output=True, text=True, timeout=10
+            )
+
             seen = set()
             for line in result.stdout.strip().splitlines():
-                parts = line.split(":")
-                if len(parts) >= 4:
-                    ssid = parts[0].strip()
-                    if not ssid or ssid in seen:
-                        continue
-                    seen.add(ssid)
-                    sig = parts[1].strip()
-                    networks.append({
-                        "ssid": ssid, "signal": int(sig) if sig.isdigit() else 0,
-                        "security": parts[2].strip() or "Open",
-                        "in_use": parts[3].strip() == "*",
-                        "bars": max(1, min(4, int(sig) // 25)) if sig.isdigit() else 1,
-                    })
+                # Skip header lines output by wpa_cli
+                if not line or line.startswith("Selected interface") or line.startswith("bssid"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 5:
+                    continue
+                ssid = parts[4].strip()
+                if not ssid or ssid in seen:
+                    continue
+                seen.add(ssid)
+
+                # Signal is dBm (negative); convert to 0-100%
+                dbm = int(parts[2]) if parts[2].lstrip("-").isdigit() else -100
+                pct = max(0, min(100, 2 * (dbm + 100)))
+                flags = parts[3]
+                if "WPA2" in flags:
+                    security = "WPA2"
+                elif "WPA" in flags:
+                    security = "WPA"
+                elif "WEP" in flags:
+                    security = "WEP"
+                else:
+                    security = "Open"
+
+                networks.append({
+                    "ssid":     ssid,
+                    "signal":   pct,
+                    "security": security,
+                    "in_use":   ssid == current_ssid,
+                    "bars":     max(1, min(4, pct // 25)),
+                })
+
         elif OS == "Darwin":
             airport = ("/System/Library/PrivateFrameworks/Apple80211.framework"
                        "/Versions/Current/Resources/airport")
@@ -169,11 +206,13 @@ def scan_wifi():
                     sig = int(parts[2]) if parts[2].lstrip("-").isdigit() else -100
                     pct = max(0, min(100, 2 * (sig + 100)))
                     networks.append({
-                        "ssid": parts[0], "signal": pct,
+                        "ssid":     parts[0],
+                        "signal":   pct,
                         "security": parts[-1] if len(parts) > 5 else "Open",
-                        "in_use": False,
-                        "bars": max(1, min(4, pct // 25)),
+                        "in_use":   False,
+                        "bars":     max(1, min(4, pct // 25)),
                     })
+
         networks.sort(key=lambda x: x["signal"], reverse=True)
     except Exception as e:
         networks = [{"ssid": f"Scan error: {e}", "signal": 0,
@@ -185,17 +224,50 @@ def connect_to_wifi(ssid, password=""):
     OS = platform.system()
     try:
         if OS == "Linux":
-            cmd = ["nmcli", "dev", "wifi", "connect", ssid]
+            # Add a new network entry in wpa_supplicant
+            r = subprocess.run(
+                ["sudo", "wpa_cli", "-i", WLAN_IFACE, "add_network"],
+                capture_output=True, text=True, timeout=10
+            )
+            net_id = r.stdout.strip().splitlines()[-1].strip()
+            if not net_id.isdigit():
+                return False, f"Could not add network (wpa_cli returned: {net_id!r})"
+
+            # Set SSID
+            subprocess.run(
+                ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network", net_id, "ssid", f'"{ssid}"'],
+                capture_output=True, timeout=10
+            )
+
+            # Set credentials
             if password:
-                cmd += ["password", password]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            ok = "successfully" in r.stdout.lower()
-            return ok, r.stdout.strip() or r.stderr.strip()
+                subprocess.run(
+                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network", net_id, "psk", f'"{password}"'],
+                    capture_output=True, timeout=10
+                )
+            else:
+                subprocess.run(
+                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network", net_id, "key_mgmt", "NONE"],
+                    capture_output=True, timeout=10
+                )
+
+            # Enable, save, and apply
+            subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "enable_network", net_id],
+                           capture_output=True, timeout=10)
+            subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "save_config"],
+                           capture_output=True, timeout=10)
+            subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "reconfigure"],
+                           capture_output=True, timeout=10)
+
+            return True, f"Connecting to {ssid}…"
+
         elif OS == "Darwin":
             r = subprocess.run(
                 ["networksetup", "-setairportnetwork", "en0", ssid, password],
-                capture_output=True, text=True, timeout=30)
-            return r.returncode == 0, "Connected" if r.returncode == 0 else r.stderr
+                capture_output=True, text=True, timeout=30
+            )
+            return r.returncode == 0, "Connected" if r.returncode == 0 else r.stderr.strip()
+
     except Exception as e:
         return False, str(e)
     return False, "Unsupported OS"
@@ -360,6 +432,74 @@ def api_force_sync():
     """Trigger an immediate sync on demand."""
     sync.trigger()
     return jsonify({"ok": True, "message": "Sync triggered."})
+
+
+@app.route("/api/carer/status")
+@login_required
+def api_carer_status():
+    visit = db.get_active_carer_visit()
+    names = db.get_recent_carer_names()
+    return jsonify({"ok": True, "active_visit": visit, "recent_names": names})
+
+
+@app.route("/api/carer/arrive", methods=["POST"])
+@login_required
+def api_carer_arrive():
+    data       = request.get_json()
+    carer_name = (data.get("carer_name") or "").strip()
+    if not carer_name:
+        return jsonify({"ok": False, "message": "Carer name is required."}), 400
+
+    arrived_at = datetime.now().isoformat(sep=" ", timespec="seconds")
+    local_id   = db.create_carer_visit(carer_name, arrived_at)
+
+    # Try to push to Laravel immediately; queue on failure
+    try:
+        status, resp = laravel_post("carer-visits", {
+            "carer_name": carer_name,
+            "arrived_at": arrived_at,
+        })
+        if status in (200, 201):
+            laravel_id = (resp.get("data") or {}).get("id")
+            if laravel_id:
+                db.set_carer_visit_laravel_id(local_id, laravel_id)
+        else:
+            db.enqueue("carer_arrive", {"local_id": local_id,
+                                         "carer_name": carer_name,
+                                         "arrived_at": arrived_at})
+    except Exception:
+        db.enqueue("carer_arrive", {"local_id": local_id,
+                                     "carer_name": carer_name,
+                                     "arrived_at": arrived_at})
+
+    return jsonify({"ok": True, "local_id": local_id,
+                    "carer_name": carer_name, "arrived_at": arrived_at})
+
+
+@app.route("/api/carer/leave", methods=["POST"])
+@login_required
+def api_carer_leave():
+    visit = db.get_active_carer_visit()
+    if not visit:
+        return jsonify({"ok": False, "message": "No active visit found."}), 404
+
+    left_at = datetime.now().isoformat(sep=" ", timespec="seconds")
+    db.close_carer_visit(visit["id"], left_at)
+
+    if visit.get("laravel_id"):
+        try:
+            laravel_put(f"carer-visits/{visit['laravel_id']}/leave",
+                        {"left_at": left_at})
+        except Exception:
+            db.enqueue("carer_leave", {"local_id": visit["id"],
+                                        "laravel_id": visit["laravel_id"],
+                                        "left_at": left_at})
+    else:
+        db.enqueue("carer_leave", {"local_id": visit["id"],
+                                    "laravel_id": None,
+                                    "left_at": left_at})
+
+    return jsonify({"ok": True, "left_at": left_at})
 
 
 # ─────────────────────────────────────────────────────────────

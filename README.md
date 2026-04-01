@@ -1,6 +1,6 @@
 # Dementia Client
 
-A Python/Flask dashboard designed to run on a Raspberry Pi as a always-on display. It connects to the **dementia** Laravel API and caches all data locally in SQLite so the display keeps working even without an internet connection.
+A Python/Flask dashboard designed to run on a Raspberry Pi as an always-on display. It connects to the **dementia** Laravel API and caches all data locally in SQLite so the display keeps working even without an internet connection.
 
 ## Features
 
@@ -16,12 +16,12 @@ A Python/Flask dashboard designed to run on a Raspberry Pi as a always-on displa
 ## Requirements
 
 - Python 3.11+
-- Docker & Docker Compose (recommended), **or** a plain Python environment
+- Docker & Docker Compose (recommended for development), **or** a plain Python environment (recommended for Raspberry Pi)
 - A running instance of the **dementia** Laravel API
 
 ---
 
-## Quick Start (Docker — recommended)
+## Quick Start (Docker — development)
 
 ```bash
 # 1. Clone the repo
@@ -32,7 +32,10 @@ cd dementia-client
 cp .env.example .env
 # Edit .env — set API_BASE_URL and SECRET_KEY
 
-# 3. Start
+# 3. Create the external proxy network if it doesn't exist
+docker network create proxy
+
+# 4. Start
 docker compose up -d
 
 # Open http://localhost:8000
@@ -40,30 +43,57 @@ docker compose up -d
 
 ---
 
-## Quick Start (Raspberry Pi — without Docker)
+## Quick Start (Raspberry Pi — recommended)
+
+Docker is not recommended on the Pi Zero due to limited RAM (512MB). Use the setup script instead — it configures everything in one go.
+
+### 1. Flash Raspberry Pi OS
+
+Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash **Raspberry Pi OS with Desktop** to your SD card. In the imager's advanced options you can pre-configure your WiFi credentials and enable SSH so you don't need a keyboard/monitor for setup.
+
+### 2. Boot and run the setup script
+
+SSH in (or open a terminal on the Pi) and run:
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/skinnydesign/dementia-client.git
-cd dementia-client
-
-# 2. Create a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Create environment file
-cp .env.example .env
-# Edit .env — set API_BASE_URL and SECRET_KEY
-
-# 5. Run
-cd app
-gunicorn -w 2 -b 0.0.0.0:8000 app:app
+curl -sSL https://raw.githubusercontent.com/skinnydesign/dementia-client/main/setup.sh | sudo bash
 ```
 
-To run on boot, add a systemd service or use `cron @reboot`.
+Or if you've already cloned the repo:
+
+```bash
+sudo bash setup.sh
+```
+
+The script will ask for your `API_BASE_URL` and `SECRET_KEY`, then handle everything:
+
+- Installs all system dependencies
+- Clones the repo and sets up a Python virtual environment
+- Writes the `.env` file
+- Configures passwordless sudo for WiFi commands
+- Creates and enables the systemd service
+- Enables desktop auto-login
+- Configures Chromium in kiosk mode to launch on boot
+- Disables screen blanking
+
+When it finishes, reboot:
+
+```bash
+sudo reboot
+```
+
+The Pi will boot straight into the kiosk display.
+
+### Cloning for multiple devices
+
+Once you have one Pi set up and working, you can clone the SD card to provision additional devices without running the setup script again:
+
+```bash
+# On your Mac/Linux machine — find your SD card device first with `diskutil list` (Mac) or `lsblk` (Linux)
+sudo dd if=/dev/sdX of=dementia-client.img bs=4M status=progress
+```
+
+Then flash `dementia-client.img` to each new SD card using Raspberry Pi Imager ("Use custom image").
 
 ---
 
@@ -81,7 +111,7 @@ DATA_DIR=/data
 |---|---|
 | `API_BASE_URL` | Full URL to the Laravel API (include `/api`) |
 | `SECRET_KEY` | Flask session secret — set to something random |
-| `DATA_DIR` | Where SQLite database and config are stored (default: `~`) |
+| `DATA_DIR` | Where the SQLite database is stored (default: `~`) |
 
 ---
 
@@ -98,9 +128,9 @@ dementia-client/
 │   └── js/app.js       # Flash message auto-dismiss
 ├── templates/
 │   ├── base.html       # Shared layout, schedule alarm, alert banner
-│   ├── login.html      # Sign in page
+│   ├── login.html      # Sign in page (includes WiFi setup link)
 │   ├── wifi_setup.html # WiFi setup (no login required)
-│   ├── dashboard.html  # Widget layout page
+│   ├── dashboard.html  # Configurable widget layout page
 │   ├── todos.html      # Todos + schedule + calendar page
 │   ├── index.html      # Settings page
 │   └── widgets/
@@ -126,18 +156,23 @@ dementia-client/
 
 ---
 
-## WiFi (Raspberry Pi)
+## WiFi Setup (Raspberry Pi)
 
-WiFi scanning uses `nmcli`. Install NetworkManager if it isn't present:
-
-```bash
-sudo apt install network-manager
-
-# Allow the app user to run nmcli without sudo
-sudo usermod -aG netdev $USER
-```
+WiFi scan and connect uses `wpa_cli` and `iwgetid`, which are included with `wpasupplicant` and `wireless-tools` on Raspberry Pi OS.
 
 The WiFi setup page is available at `/wifi-setup` **without logging in**, so users can connect the device to their network before signing in.
+
+> **Note:** Raspberry Pi OS Bookworm (2023+) switched to NetworkManager by default. If you are running Bookworm, `wpa_cli` may not be active. You can either switch back to wpa_supplicant or install NetworkManager and adapt the WiFi functions in `app/app.py` to use `nmcli`.
+
+---
+
+## Hardware Recommendation
+
+| Model | RAM | Recommended? |
+|---|---|---|
+| Pi Zero (original) | 512MB | Works but slow — browser + server is tight |
+| **Pi Zero 2 W** | 512MB | **Recommended** — quad-core, much faster |
+| Pi 3 / 4 | 1GB+ | Ideal if available |
 
 ---
 
@@ -151,8 +186,8 @@ This client connects to the **dementia** Laravel app. The following API endpoint
 | `DELETE /api/token` | Logout |
 | `GET /api/apiTodos` | Fetch todos |
 | `PUT /api/apiTodos/{id}/complete` | Complete a todo |
-| `GET /api/schedule` | Fetch schedule items |
+| `GET /api/schedule` | Fetch schedule items with completion history |
 | `PUT /api/schedule/{id}/complete` | Complete a schedule item |
-| `GET /api/ical` | Fetch iCal settings (URL + days) |
+| `GET /api/ical` | Fetch iCal settings (URL + days ahead) |
 | `GET /api/alert` | Fetch current active alert |
 | `GET /api/layout` | Fetch dashboard widget layout |

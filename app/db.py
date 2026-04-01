@@ -79,6 +79,14 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_completions_schedule
                 ON schedule_completions (schedule_id, completed_at DESC);
 
+            CREATE TABLE IF NOT EXISTS carer_visits (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                laravel_id   INTEGER,
+                carer_name   TEXT NOT NULL,
+                arrived_at   TEXT NOT NULL,
+                left_at      TEXT
+            );
+
             CREATE TABLE IF NOT EXISTS sync_queue (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 action     TEXT NOT NULL,
@@ -317,6 +325,57 @@ def set_layout(data: dict) -> None:
             "INSERT OR REPLACE INTO layout_cache (id, data) VALUES (1, ?)",
             (json.dumps(data),)
         )
+
+
+# ─────────────────────────────────────────────────────────────
+#  CARER VISITS
+# ─────────────────────────────────────────────────────────────
+
+def get_active_carer_visit() -> dict | None:
+    """Return the open visit (no left_at), or None."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM carer_visits WHERE left_at IS NULL ORDER BY arrived_at DESC LIMIT 1"
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def create_carer_visit(carer_name: str, arrived_at: str) -> int:
+    with get_db() as conn:
+        cur = conn.execute(
+            "INSERT INTO carer_visits (carer_name, arrived_at) VALUES (?, ?)",
+            (carer_name, arrived_at)
+        )
+        return cur.lastrowid
+
+
+def close_carer_visit(local_id: int, left_at: str) -> None:
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE carer_visits SET left_at = ? WHERE id = ?",
+            (left_at, local_id)
+        )
+
+
+def set_carer_visit_laravel_id(local_id: int, laravel_id: int) -> None:
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE carer_visits SET laravel_id = ? WHERE id = ?",
+            (laravel_id, local_id)
+        )
+
+
+def get_recent_carer_names(limit: int = 6) -> list[str]:
+    """Return distinct carer names from most recent visits."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT carer_name FROM carer_visits
+               GROUP BY carer_name
+               ORDER BY MAX(arrived_at) DESC
+               LIMIT ?""",
+            (limit,)
+        ).fetchall()
+        return [r["carer_name"] for r in rows]
 
 
 # ─────────────────────────────────────────────────────────────

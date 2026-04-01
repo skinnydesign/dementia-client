@@ -98,6 +98,39 @@ def _push_queue(base: str, headers: dict) -> None:
                 )
                 ok = r.status_code == 200
 
+            elif action == "carer_arrive":
+                r = requests.post(
+                    f"{base}/carer-visits",
+                    json={"carer_name": payload["carer_name"],
+                          "arrived_at": payload["arrived_at"]},
+                    headers=headers, timeout=10
+                )
+                ok = r.status_code in (200, 201)
+                if ok:
+                    laravel_id = (r.json().get("data") or {}).get("id")
+                    if laravel_id:
+                        db.set_carer_visit_laravel_id(payload["local_id"], laravel_id)
+
+            elif action == "carer_leave":
+                laravel_id = payload.get("laravel_id")
+                if not laravel_id:
+                    # Check if a previous sync filled it in
+                    visit = db.get_db().execute(
+                        "SELECT laravel_id FROM carer_visits WHERE id = ?",
+                        (payload["local_id"],)
+                    ).fetchone()
+                    laravel_id = visit["laravel_id"] if visit else None
+
+                if laravel_id:
+                    r = requests.put(
+                        f"{base}/carer-visits/{laravel_id}/leave",
+                        json={"left_at": payload["left_at"]},
+                        headers=headers, timeout=10
+                    )
+                    ok = r.status_code == 200
+                else:
+                    ok = False  # retry next cycle
+
         except Exception as e:
             log.warning(f"Queue push failed ({action}): {e}")
 
