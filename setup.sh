@@ -45,13 +45,13 @@ print_header
 echo -e "${AMBER}Configuration${NC}"
 echo ""
 
-read -p "  API_BASE_URL (e.g. https://yourapp.com/api): " API_BASE_URL
+read -r -p "  API_BASE_URL (e.g. https://yourapp.com/api): " API_BASE_URL </dev/tty || true
 while [ -z "$API_BASE_URL" ]; do
     echo -e "  ${RED}API_BASE_URL is required.${NC}"
-    read -p "  API_BASE_URL: " API_BASE_URL
+    read -r -p "  API_BASE_URL: " API_BASE_URL </dev/tty || true
 done
 
-read -p "  SECRET_KEY (leave blank to auto-generate): " SECRET_KEY
+read -r -p "  SECRET_KEY (leave blank to auto-generate): " SECRET_KEY </dev/tty || true
 if [ -z "$SECRET_KEY" ]; then
     SECRET_KEY=$(openssl rand -hex 32)
     ok "Generated SECRET_KEY: $SECRET_KEY"
