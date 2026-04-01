@@ -72,12 +72,20 @@ step "Installing dependencies..."
 apt-get install -y -qq \
     python3-pip \
     python3-venv \
-    chromium-browser \
     wpasupplicant \
     wireless-tools \
     git \
     unclutter
-ok "Dependencies installed"
+
+# Chromium package name changed in Bookworm
+if apt-cache show chromium &>/dev/null; then
+    apt-get install -y -qq chromium
+    CHROMIUM_BIN="chromium"
+else
+    apt-get install -y -qq chromium-browser
+    CHROMIUM_BIN="chromium-browser"
+fi
+ok "Dependencies installed (chromium: $CHROMIUM_BIN)"
 
 # ─── App install ──────────────────────────────────────────────────────────────
 
@@ -158,14 +166,14 @@ ok "Auto-login enabled"
 step "Configuring kiosk autostart..."
 AUTOSTART_DIR="/etc/xdg/lxsession/LXDE-pi"
 mkdir -p "$AUTOSTART_DIR"
-cat > "${AUTOSTART_DIR}/autostart" << 'EOF'
+cat > "${AUTOSTART_DIR}/autostart" << EOF
 @lxpanel --profile LXDE-pi
 @pcmanfm --desktop --profile LXDE-pi
 @xset s off
 @xset s noblank
 @xset -dpms
 @unclutter -idle 0.5 -root
-@chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000
+@${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000
 EOF
 ok "Kiosk autostart configured"
 
