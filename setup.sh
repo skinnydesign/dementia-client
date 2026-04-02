@@ -185,6 +185,7 @@ if [ "$DESKTOP_SESSION_CHECK" = "rpd-labwc" ] || grep -qi "bookworm" /etc/os-rel
 unclutter -idle 0.5 -root &
 ${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000 &
 EOF
+    chmod +x "${LABWC_DIR}/autostart"
     chown -R "$REAL_USER:$REAL_USER" "$LABWC_DIR"
     ok "Kiosk autostart configured (labwc/Wayland)"
 else
