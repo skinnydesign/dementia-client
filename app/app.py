@@ -18,7 +18,19 @@ from functools import wraps
 import db
 import sync
 
-app = Flask(__name__)
+# Locate templates/static — same level as app.py in Docker (via volume mounts),
+# one level up on a bare Pi where the repo structure is app/ templates/ static/
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+def _find_dir(name: str) -> str:
+    same_level = os.path.join(_HERE, name)
+    if os.path.isdir(same_level):
+        return same_level
+    return os.path.join(os.path.dirname(_HERE), name)
+
+app = Flask(__name__,
+            template_folder=_find_dir('templates'),
+            static_folder=_find_dir('static'))
 app.secret_key = os.environ.get("SECRET_KEY", "change-me-in-production-please")
 
 CONFIG_FILE = os.path.join(
