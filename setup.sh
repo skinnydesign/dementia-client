@@ -111,8 +111,8 @@ fi
 
 step "Setting up Python environment..."
 sudo -u "$REAL_USER" python3 -m venv "$INSTALL_DIR/venv"
-sudo -u "$REAL_USER" "$INSTALL_DIR/venv/bin/pip" install -q --upgrade pip
-sudo -u "$REAL_USER" "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/requirements.txt"
+sudo -u "$REAL_USER" "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
+sudo -u "$REAL_USER" "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
 ok "Python environment ready"
 
 # ─── Data directory ───────────────────────────────────────────────────────────
@@ -175,9 +175,23 @@ ok "Auto-login enabled"
 # ─── Kiosk autostart ─────────────────────────────────────────────────────────
 
 step "Configuring kiosk autostart..."
-AUTOSTART_DIR="/etc/xdg/lxsession/LXDE-pi"
-mkdir -p "$AUTOSTART_DIR"
-cat > "${AUTOSTART_DIR}/autostart" << EOF
+DESKTOP_SESSION_CHECK=$(sudo -u "$REAL_USER" bash -c 'echo $DESKTOP_SESSION' 2>/dev/null || echo "")
+
+if [ "$DESKTOP_SESSION_CHECK" = "rpd-labwc" ] || grep -qi "bookworm" /etc/os-release 2>/dev/null; then
+    # Bookworm / labwc (Wayland)
+    LABWC_DIR="${REAL_HOME}/.config/labwc"
+    mkdir -p "$LABWC_DIR"
+    cat > "${LABWC_DIR}/autostart" << EOF
+unclutter -idle 0.5 -root &
+${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000 &
+EOF
+    chown -R "$REAL_USER:$REAL_USER" "$LABWC_DIR"
+    ok "Kiosk autostart configured (labwc/Wayland)"
+else
+    # Bullseye / LXDE (X11)
+    AUTOSTART_DIR="/etc/xdg/lxsession/LXDE-pi"
+    mkdir -p "$AUTOSTART_DIR"
+    cat > "${AUTOSTART_DIR}/autostart" << EOF
 @lxpanel --profile LXDE-pi
 @pcmanfm --desktop --profile LXDE-pi
 @xset s off
@@ -186,7 +200,8 @@ cat > "${AUTOSTART_DIR}/autostart" << EOF
 @unclutter -idle 0.5 -root
 @${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000
 EOF
-ok "Kiosk autostart configured"
+    ok "Kiosk autostart configured (LXDE/X11)"
+fi
 
 # ─── Disable screen blanking system-wide ─────────────────────────────────────
 
