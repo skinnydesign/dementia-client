@@ -11,7 +11,6 @@ AMBER='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-INSTALL_DIR="/home/pi/dementia-client"
 SERVICE_NAME="dementia-client"
 REPO_URL="https://github.com/skinnydesign/dementia-client.git"
 
@@ -38,7 +37,19 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# ─── Detect the real user (whoever ran sudo) ──────────────────────────────────
+
+REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo '')}"
+if [ -z "$REAL_USER" ] || [ "$REAL_USER" = "root" ]; then
+    echo -e "${RED}Could not detect the non-root user. Please run as: sudo bash setup.sh${NC}"
+    exit 1
+fi
+REAL_HOME=$(eval echo "~$REAL_USER")
+INSTALL_DIR="${REAL_HOME}/dementia-client"
+
 print_header
+echo -e "  Installing for user: ${GREEN}${REAL_USER}${NC} (home: ${REAL_HOME})"
+echo ""
 
 # ─── Gather config ────────────────────────────────────────────────────────────
 
@@ -91,23 +102,23 @@ ok "Dependencies installed (chromium: $CHROMIUM_BIN)"
 
 step "Installing application..."
 if [ -d "$INSTALL_DIR/.git" ]; then
-    sudo -u pi git -C "$INSTALL_DIR" pull --ff-only
+    sudo -u "$REAL_USER" git -C "$INSTALL_DIR" pull --ff-only
     ok "Repository updated"
 else
-    sudo -u pi git clone "$REPO_URL" "$INSTALL_DIR"
+    sudo -u "$REAL_USER" git clone "$REPO_URL" "$INSTALL_DIR"
     ok "Repository cloned"
 fi
 
 step "Setting up Python environment..."
-sudo -u pi python3 -m venv "$INSTALL_DIR/venv"
-sudo -u pi "$INSTALL_DIR/venv/bin/pip" install -q --upgrade pip
-sudo -u pi "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/requirements.txt"
+sudo -u "$REAL_USER" python3 -m venv "$INSTALL_DIR/venv"
+sudo -u "$REAL_USER" "$INSTALL_DIR/venv/bin/pip" install -q --upgrade pip
+sudo -u "$REAL_USER" "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/requirements.txt"
 ok "Python environment ready"
 
 # ─── Data directory ───────────────────────────────────────────────────────────
 
 mkdir -p /data
-chown pi:pi /data
+chown "$REAL_USER:$REAL_USER" /data
 ok "Data directory created at /data"
 
 # ─── .env file ────────────────────────────────────────────────────────────────
@@ -118,14 +129,14 @@ API_BASE_URL=${API_BASE_URL}
 SECRET_KEY=${SECRET_KEY}
 DATA_DIR=/data
 EOF
-chown pi:pi "$INSTALL_DIR/.env"
+chown "$REAL_USER:$REAL_USER" "$INSTALL_DIR/.env"
 ok ".env written"
 
 # ─── Sudoers for WiFi ─────────────────────────────────────────────────────────
 
 step "Configuring passwordless sudo for WiFi commands..."
-cat > /etc/sudoers.d/dementia-wifi << 'EOF'
-pi ALL=(ALL) NOPASSWD: /sbin/wpa_cli, /sbin/iwgetid
+cat > /etc/sudoers.d/dementia-wifi << EOF
+${REAL_USER} ALL=(ALL) NOPASSWD: /sbin/wpa_cli, /sbin/iwgetid
 EOF
 chmod 0440 /etc/sudoers.d/dementia-wifi
 ok "Sudoers configured"
@@ -139,7 +150,7 @@ Description=Dementia Client
 After=network.target
 
 [Service]
-User=pi
+User=${REAL_USER}
 WorkingDirectory=${INSTALL_DIR}/app
 EnvironmentFile=${INSTALL_DIR}/.env
 ExecStart=${INSTALL_DIR}/venv/bin/gunicorn -w 2 -b 0.0.0.0:8000 app:app
@@ -177,11 +188,13 @@ cat > "${AUTOSTART_DIR}/autostart" << EOF
 EOF
 ok "Kiosk autostart configured"
 
-# ─── Disable screen blanking system-wide ────────────────────────────────────
+# ─── Disable screen blanking system-wide ─────────────────────────────────────
 
 step "Disabling screen blanking..."
-if ! grep -q "consoleblank=0" /boot/cmdline.txt 2>/dev/null; then
-    sed -i 's/$/ consoleblank=0/' /boot/cmdline.txt
+CMDLINE="/boot/firmware/cmdline.txt"
+[ -f "$CMDLINE" ] || CMDLINE="/boot/cmdline.txt"
+if ! grep -q "consoleblank=0" "$CMDLINE" 2>/dev/null; then
+    sed -i 's/$/ consoleblank=0/' "$CMDLINE"
 fi
 ok "Screen blanking disabled"
 
