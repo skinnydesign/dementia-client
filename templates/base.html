@@ -28,10 +28,13 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <script>
-  // Apply saved font size before first paint to avoid flash
+  // Apply saved font size and orientation before first paint to avoid flash
   (function() {
     var sz = parseInt(localStorage.getItem('fontSize') || '15', 10);
     document.documentElement.style.fontSize = sz + 'px';
+    if (localStorage.getItem('orientation') === 'portrait') {
+      document.documentElement.classList.add('portrait-mode');
+    }
   })();
 </script>
 <script src="https://cdn.tailwindcss.com"></script>

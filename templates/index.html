@@ -106,7 +106,7 @@
       <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">DISPLAY</span>
     </div>
     <div class="p-5">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between mb-5">
         <div>
           <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">FONT SIZE</p>
           <p class="text-[#666666] text-xs">Current: <span id="font-size-label">15px</span></p>
@@ -129,6 +129,23 @@
                          text-[#e8e8e8] font-mono font-bold hover:border-amber-500/50 hover:text-amber-500 transition-colors"
                   title="Increase font size">
             <span class="text-lg leading-none">A+</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-5 border-t border-[#2a2a2a]">
+        <div>
+          <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">ORIENTATION</p>
+          <p class="text-[#666666] text-xs">Rotate the display 90°</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-landscape" onclick="setOrientation('landscape')"
+                  class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
+            LANDSCAPE
+          </button>
+          <button id="btn-portrait" onclick="setOrientation('portrait')"
+                  class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
+            PORTRAIT
           </button>
         </div>
       </div>
@@ -197,6 +214,27 @@ function adjustFontSize(delta) {
 (function() {
   const sz = parseInt(localStorage.getItem('fontSize') || FONT_DEFAULT, 10);
   document.getElementById('font-size-label').textContent = sz + 'px';
+})();
+
+function setOrientation(mode) {
+  localStorage.setItem('orientation', mode);
+  document.documentElement.classList.toggle('portrait-mode', mode === 'portrait');
+  updateOrientationButtons(mode);
+}
+
+function updateOrientationButtons(mode) {
+  const isPortrait = mode === 'portrait';
+  const btnL = document.getElementById('btn-landscape');
+  const btnP = document.getElementById('btn-portrait');
+  btnL.classList.toggle('text-amber-500', !isPortrait);
+  btnL.classList.toggle('border-amber-500/50', !isPortrait);
+  btnP.classList.toggle('text-amber-500', isPortrait);
+  btnP.classList.toggle('border-amber-500/50', isPortrait);
+}
+
+(function() {
+  const o = localStorage.getItem('orientation') || 'landscape';
+  updateOrientationButtons(o);
 })();
 
 async function scanWifi() {

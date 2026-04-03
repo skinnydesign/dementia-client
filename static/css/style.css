@@ -55,3 +55,15 @@
 .animate-slide-in {
   animation: slideIn 0.25s ease;
 }
+
+/* ── Portrait mode ──────────────────────────────────── */
+html.portrait-mode body {
+  transform: rotate(90deg);
+  transform-origin: center center;
+  width: 100vh;
+  height: 100vw;
+  position: fixed;
+  top: calc((100vh - 100vw) / 2);
+  left: calc((100vw - 100vh) / 2);
+  overflow: hidden;
+}
