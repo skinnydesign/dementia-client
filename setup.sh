@@ -177,16 +177,17 @@ ok "Auto-login enabled"
 step "Configuring kiosk autostart..."
 DESKTOP_SESSION_CHECK=$(sudo -u "$REAL_USER" bash -c 'echo $DESKTOP_SESSION' 2>/dev/null || echo "")
 
-if [ "$DESKTOP_SESSION_CHECK" = "rpd-labwc" ] || grep -qi "bookworm" /etc/os-release 2>/dev/null; then
-    # Bookworm / labwc (Wayland)
-    LABWC_DIR="${REAL_HOME}/.config/labwc"
-    mkdir -p "$LABWC_DIR"
-    cat > "${LABWC_DIR}/autostart" << EOF
-sleep 5 && ${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000 &
+if grep -qi "bookworm" /etc/os-release 2>/dev/null; then
+    # Bookworm / labwc (Wayland) — use XDG autostart .desktop file
+    cat > /etc/xdg/autostart/dementia-kiosk.desktop << EOF
+[Desktop Entry]
+Type=Application
+Name=Dementia Kiosk
+Exec=/bin/bash -c 'sleep 5 && ${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000'
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
 EOF
-    chmod +x "${LABWC_DIR}/autostart"
-    chown -R "$REAL_USER:$REAL_USER" "$LABWC_DIR"
-    ok "Kiosk autostart configured (labwc/Wayland)"
+    ok "Kiosk autostart configured (XDG/Bookworm)"
 else
     # Bullseye / LXDE (X11)
     AUTOSTART_DIR="/etc/xdg/lxsession/LXDE-pi"
