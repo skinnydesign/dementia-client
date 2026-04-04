@@ -28,7 +28,7 @@
 <script>
   // Apply saved font size and orientation before first paint to avoid flash
   (function() {
-    var sz = parseInt(localStorage.getItem('fontSize') || '15', 10);
+    var sz = parseInt(localStorage.getItem('fontSize') || '20', 10);
     document.documentElement.style.fontSize = sz + 'px';
     if (localStorage.getItem('orientation') === 'portrait') {
       document.documentElement.classList.add('portrait-mode');
@@ -42,13 +42,13 @@
       extend: {
         fontFamily: {
           mono: ['"JetBrains Mono"', 'monospace'],
-          sans: ['"DM Sans"', 'sans-serif'],
+          sans: ['"Atkinson Hyperlegible"', '"DM Sans"', 'sans-serif'],
         },
         colors: {
-          surface:  '#0a0a0a',
-          panel:    '#111111',
-          raised:   '#1a1a1a',
-          hovered:  '#222222',
+          surface:  '#161616',
+          panel:    '#1e1e1e',
+          raised:   '#252525',
+          hovered:  '#2e2e2e',
           lit:      '#3a3a3a',
         },
         borderColor: {
@@ -60,7 +60,7 @@
   }
 </script>
 </head>
-<body class="bg-surface text-[#e8e8e8] font-sans text-[1rem] leading-relaxed overflow-hidden w-full h-full">
+<body class="bg-surface text-[#E8E6E3] font-sans font-semibold text-[1rem] leading-relaxed tracking-[0.02em] overflow-hidden w-full h-full">
 
 {% if session.get('api_token') %}
 <div class="w-screen h-screen overflow-hidden relative">
@@ -95,7 +95,7 @@
           <line x1="12" y1="2" x2="12" y2="1"/>
         </svg>
       </div>
-      <p class="font-mono text-sm font-bold tracking-[0.2em] text-black/60 mb-3">TIME TO DO THIS</p>
+      <p class="font-mono text-sm font-bold tracking-[0.2em] text-black/80 mb-3">TIME TO DO THIS</p>
       <div id="alarm-items" class="mb-8 flex flex-col gap-3"></div>
       <button onclick="alarmMarkAllDone()"
               class="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-black text-amber-400
@@ -107,7 +107,7 @@
         MARK ALL DONE
       </button>
       <button onclick="alarmDismiss()"
-              class="mt-3 w-full max-w-xs mx-auto block font-mono text-xs text-black/50 hover:text-black/80 transition-colors py-2">
+              class="mt-3 w-full max-w-xs mx-auto block font-mono text-xs text-black/75 hover:text-black/90 transition-colors py-2">
         Remind me again later
       </button>
     </div>
@@ -172,15 +172,24 @@
     </div>
   </div>
 
-  <!-- Settings cog — bottom-right corner -->
+  <!-- Settings cog / back button — bottom-right corner -->
+  {% if request.endpoint == 'settings' %}
+  <a href="{{ url_for('dashboard') }}"
+     class="fixed bottom-5 right-5 z-50 w-10 h-10 rounded-full bg-panel border border-amber-500/50
+            flex items-center justify-center text-amber-500 hover:bg-amber-500/10
+            transition-colors duration-150 shadow-lg"
+     title="Back to display">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+  </a>
+  {% else %}
   <a href="{{ url_for('settings') }}"
      class="fixed bottom-5 right-5 z-50 w-10 h-10 rounded-full bg-panel border border-[#2a2a2a]
             flex items-center justify-center text-[#666666] hover:text-amber-500 hover:border-amber-500/50
-            transition-colors duration-150 shadow-lg
-            {% if request.endpoint == 'settings' %}text-amber-500 border-amber-500/50{% endif %}"
+            transition-colors duration-150 shadow-lg"
      title="Settings">
     {{ _icon('settings') }}
   </a>
+  {% endif %}
 
 </div>
 {% else %}
@@ -273,7 +282,7 @@
     container.innerHTML = items.map(item => `
       <div class="bg-black/10 rounded-xl px-6 py-4">
         <p class="font-mono text-2xl font-bold text-black leading-tight">${item.name}</p>
-        <p class="font-mono text-sm text-black/60 mt-1">${item.frequency} &middot; ${item.scheduled_time}</p>
+        <p class="font-mono text-sm text-black/75 mt-1">${item.frequency} &middot; ${item.scheduled_time}</p>
       </div>
     `).join('');
 

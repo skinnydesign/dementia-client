@@ -2,6 +2,27 @@
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}DASHBOARD{% endblock %}
 
+{% block scripts %}
+<script>
+(function() {
+  const current = {{ layout | tojson }};
+  const currentStr = JSON.stringify(current);
+
+  async function checkLayout() {
+    try {
+      const res  = await fetch('/api/layout');
+      const data = await res.json();
+      if (data.ok && JSON.stringify(data.layout) !== currentStr) {
+        location.reload();
+      }
+    } catch(e) {}
+  }
+
+  setInterval(checkLayout, 300000);
+})();
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="flex flex-col gap-3 p-4 h-full">
 
@@ -11,13 +32,10 @@
   </div>
   {% endif %}
 
-  {% if layout.top_left or layout.top_center or layout.top_right %}
-  <div class="grid grid-cols-3 gap-3">
+  {% if layout.top_left or layout.top_right %}
+  <div class="grid grid-cols-2 gap-3">
     <div id="slot-top_left">
       {% if layout.top_left %}{% include 'widgets/' + layout.top_left + '.html' %}{% endif %}
-    </div>
-    <div id="slot-top_center">
-      {% if layout.top_center %}{% include 'widgets/' + layout.top_center + '.html' %}{% endif %}
     </div>
     <div id="slot-top_right">
       {% if layout.top_right %}{% include 'widgets/' + layout.top_right + '.html' %}{% endif %}
@@ -43,13 +61,10 @@
   </div>
   {% endif %}
 
-  {% if layout.bottom_left or layout.bottom_center or layout.bottom_right %}
-  <div class="grid grid-cols-3 gap-3">
+  {% if layout.bottom_left or layout.bottom_right %}
+  <div class="grid grid-cols-2 gap-3">
     <div id="slot-bottom_left">
       {% if layout.bottom_left %}{% include 'widgets/' + layout.bottom_left + '.html' %}{% endif %}
-    </div>
-    <div id="slot-bottom_center">
-      {% if layout.bottom_center %}{% include 'widgets/' + layout.bottom_center + '.html' %}{% endif %}
     </div>
     <div id="slot-bottom_right">
       {% if layout.bottom_right %}{% include 'widgets/' + layout.bottom_right + '.html' %}{% endif %}
@@ -63,9 +78,9 @@
   </div>
   {% endif %}
 
-  {% set all_empty = not (layout.top_bar or layout.top_left or layout.top_center or layout.top_right
+  {% set all_empty = not (layout.top_bar or layout.top_left or layout.top_right
     or layout.upper_third or layout.middle_center or layout.lower_third
-    or layout.bottom_left or layout.bottom_center or layout.bottom_right or layout.bottom_bar) %}
+    or layout.bottom_left or layout.bottom_right or layout.bottom_bar) %}
   {% if all_empty %}
   <div class="flex-1 flex flex-col items-center justify-center gap-3 text-center py-20">
     <p class="font-mono text-xs tracking-widest text-[#666666]">NO WIDGETS CONFIGURED</p>

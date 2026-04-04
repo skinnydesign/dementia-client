@@ -6,6 +6,7 @@ import json
 import os
 import sqlite3
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 DB_PATH = os.path.join(
     os.environ.get("DATA_DIR", os.path.expanduser("~")), "control.db"
@@ -211,14 +212,18 @@ def upsert_completions(schedule_id: int, completions: list[dict]) -> None:
         )
 
 
-def is_due(item: dict) -> bool:
+def is_due(item: dict, now: datetime = None) -> bool:
     """Replicates the Laravel isDue() logic locally."""
     try:
+        if now is None:
+            now = _local_now()
         t       = datetime.strptime(item["scheduled_time"][:5], "%H:%M").time()
-        now     = datetime.now()
-        today_s = datetime.combine(date.today(), t)
+        today_s = datetime.combine(now.date(), t)
         last    = (datetime.fromisoformat(item["last_completed_at"])
                    if item.get("last_completed_at") else None)
+        if last is not None and last.tzinfo is not None:
+            tz = ZoneInfo(get_state("app_timezone") or "UTC")
+            last = last.astimezone(tz).replace(tzinfo=None)
         freq    = item["frequency"]
 
         if freq == "daily":
@@ -248,9 +253,19 @@ def is_due(item: dict) -> bool:
     return False
 
 
+def _local_now() -> datetime:
+    """Return naive datetime representing current time in the user's configured timezone."""
+    tz_name = get_state("app_timezone") or "UTC"
+    try:
+        return datetime.now(ZoneInfo(tz_name)).replace(tzinfo=None)
+    except ZoneInfoNotFoundError:
+        return datetime.now()
+
+
 def get_due_items() -> list[dict]:
+    now = _local_now()
     items = get_schedule_items()
-    return [i for i in items if is_due(i)]
+    return [i for i in items if is_due(i, now)]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -287,9 +302,13 @@ def get_alert() -> dict | None:
             return None
         try:
             expires = datetime.fromisoformat(row["expires_at"])
-            if expires <= datetime.now():
+            if expires.tzinfo is not None:
+                tz = ZoneInfo(get_state("app_timezone") or "UTC")
+                expires = expires.astimezone(tz).replace(tzinfo=None)
+            now = _local_now()
+            if expires <= now:
                 return None
-            seconds_remaining = int((expires - datetime.now()).total_seconds())
+            seconds_remaining = int((expires - now).total_seconds())
             return {"message": row["message"], "expires_at": row["expires_at"],
                     "seconds_remaining": seconds_remaining}
         except Exception:

@@ -604,6 +604,12 @@ def api_schedule_complete(item_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/layout")
+@login_required
+def api_layout():
+    return jsonify({"ok": True, "layout": db.get_layout()})
+
+
 @app.route("/api/alert")
 @login_required
 def api_alert():

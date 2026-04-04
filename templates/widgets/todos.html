@@ -3,7 +3,7 @@
     <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">TODOS</span>
   </div>
   <div id="todo-list" class="p-4 flex-1 overflow-y-auto">
-    <p class="font-mono text-xs text-[#666666]">Loading…</p>
+    <p class="font-sans text-sm text-[#aaaaaa]">Loading…</p>
   </div>
 </div>
 <script>
@@ -12,14 +12,14 @@
     const res  = await fetch('/api/todos');
     const data = await res.json();
     const list = document.getElementById('todo-list');
-    if (!data.ok) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">Error: ${data.message}</p>`; return; }
+    if (!data.ok) { list.innerHTML = `<p class="font-sans text-sm text-[#aaaaaa]">Error: ${data.message}</p>`; return; }
     const pending = data.todos.filter(t => !t.completed);
-    if (!pending.length) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">No pending todos.</p>`; return; }
+    if (!pending.length) { list.innerHTML = `<p class="font-sans text-sm text-[#aaaaaa]">No pending todos.</p>`; return; }
     list.innerHTML = pending.map(t => `
-      <div class="flex items-center gap-3 py-2 border-b border-[#1e1e1e] last:border-0" id="todo-${t.id}">
-        <input type="checkbox" onchange="widgetCompleteTodo(${t.id})"
-               class="accent-amber-500 w-4 h-4 flex-shrink-0 cursor-pointer">
-        <span class="font-mono text-sm text-[#e8e8e8]">${t.todo}</span>
+      <div class="flex items-center gap-3 py-3 border-b border-[#333333] last:border-0 cursor-pointer hover:bg-raised rounded transition-colors"
+           id="todo-${t.id}" onclick="widgetCompleteTodo(${t.id})">
+        <input type="checkbox" class="accent-amber-500 w-6 h-6 flex-shrink-0 pointer-events-none">
+        <span class="font-sans text-base font-semibold text-[#E8E6E3] flex-1">${t.todo}</span>
       </div>
     `).join('');
   }

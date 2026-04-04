@@ -4,7 +4,7 @@
     <span id="ical-days-label" class="font-mono text-xs text-[#666666]"></span>
   </div>
   <div id="ical-list" class="p-4 flex-1 overflow-y-auto">
-    <p class="font-mono text-xs text-[#666666]">Loading…</p>
+    <p class="font-sans text-sm text-[#aaaaaa]">Loading…</p>
   </div>
 </div>
 <script>
@@ -13,17 +13,16 @@
     const res  = await fetch('/api/ical');
     const data = await res.json();
     const list = document.getElementById('ical-list');
-    if (!data.ok) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">Error: ${data.message}</p>`; return; }
+    if (!data.ok) { list.innerHTML = `<p class="font-sans text-sm text-[#aaaaaa]">Error: ${data.message}</p>`; return; }
     document.getElementById('ical-days-label').textContent = `NEXT ${data.ical_days} DAYS`;
-    if (!data.events.length) { list.innerHTML = `<p class="font-mono text-xs text-[#666666]">No upcoming events.</p>`; return; }
+    if (!data.events.length) { list.innerHTML = `<p class="font-sans text-sm text-[#aaaaaa]">No upcoming events.</p>`; return; }
     list.innerHTML = data.events.map(e => `
-      <div class="flex items-center justify-between gap-4 py-2 border-b border-[#1e1e1e] last:border-0">
-        <span class="font-mono text-xs text-[#999999] flex-shrink-0">${formatDate(e.date, e.end, e.time, e.end_time)}</span>
+      <div class="flex items-start justify-between gap-4 py-3 border-b border-[#333333] last:border-0">
+        <span class="font-mono text-sm font-semibold text-[#aaaaaa] flex-shrink-0">${formatDate(e.date, e.end, e.time, e.end_time)}</span>
         <div class="flex-1 min-w-0">
-          <span class="font-mono text-sm text-[#e8e8e8]">${e.summary}</span>
-          ${e.location ? `<span class="font-mono text-xs text-[#666666] ml-2">@ ${e.location}</span>` : ''}
+          <span class="font-sans text-base font-semibold text-[#E8E6E3]">${e.summary}</span>
+          ${e.location ? `<span class="block text-sm text-[#aaaaaa] mt-0.5">@ ${e.location}</span>` : ''}
         </div>
-        
       </div>
     `).join('');
   }

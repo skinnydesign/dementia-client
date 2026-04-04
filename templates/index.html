@@ -152,46 +152,6 @@
     </div>
   </div>
 
-  <!-- ── Modules ─────────────────────────────────────────────────────────── -->
-  <div class="col-span-2 bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden">
-    <div class="px-5 py-3 border-b border-[#2a2a2a]">
-      <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">MODULE VISIBILITY</span>
-    </div>
-    <div class="p-5">
-      <p class="text-[#666666] text-sm mb-5">Show or hide sections from the navigation. Modules must be enabled in the server config to appear here.</p>
-      <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {% for module in available_modules %}
-          {% set is_config_enabled = module.slug in config_enabled %}
-          {% set is_hidden = module.slug in hidden_modules %}
-          <div class="flex items-center justify-between gap-4 p-4 bg-raised border border-[#2a2a2a] rounded
-                      {% if not is_config_enabled %}opacity-50{% endif %}">
-            <div class="min-w-0">
-              <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">{{ module.label|upper }}</p>
-              <p class="text-[#666666] text-xs truncate">{{ module.description }}</p>
-              {% if not is_config_enabled %}
-                <span class="inline-block mt-1 font-mono text-[9px] tracking-widest text-[#666666] border border-[#2a2a2a] px-1.5 py-0.5 rounded">
-                  NOT IN CONFIG
-                </span>
-              {% endif %}
-            </div>
-            {% if is_config_enabled %}
-              <form method="POST" action="{{ url_for('toggle_module') }}" class="flex-shrink-0">
-                <input type="hidden" name="slug" value="{{ module.slug }}">
-                <input type="hidden" name="action" value="{{ 'show' if is_hidden else 'hide' }}">
-                <button type="submit"
-                        class="relative w-10 h-5 rounded-full border transition-colors duration-200 flex items-center
-                               {% if not is_hidden %}bg-amber-500 border-amber-500{% else %}bg-raised border-[#3a3a3a]{% endif %}">
-                  <span class="absolute w-3.5 h-3.5 rounded-full transition-transform duration-200
-                               {% if not is_hidden %}bg-black translate-x-5{% else %}bg-[#666666] translate-x-0.5{% endif %}">
-                  </span>
-                </button>
-              </form>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
 
 </div>
 {% endblock %}
@@ -200,7 +160,7 @@
 <script>
 const FONT_MIN = 11;
 const FONT_MAX = 24;
-const FONT_DEFAULT = 15;
+const FONT_DEFAULT = 20;
 
 function adjustFontSize(delta) {
   const current = parseInt(localStorage.getItem('fontSize') || FONT_DEFAULT, 10);

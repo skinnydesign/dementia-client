@@ -193,6 +193,7 @@ def _pull_layout(base: str, headers: dict) -> None:
             # modules_enabled: null from Laravel means all modules on
             modules = data.get("modules_enabled")
             db.set_state("modules_enabled", json.dumps(modules))
+            db.set_state("app_timezone", data.get("timezone") or "UTC")
     except Exception as e:
         log.warning(f"Layout sync failed: {e}")
 
