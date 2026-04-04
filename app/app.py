@@ -449,9 +449,14 @@ def api_force_sync():
 @app.route("/api/carer/status")
 @login_required
 def api_carer_status():
-    visit = db.get_active_carer_visit()
-    names = db.get_recent_carer_names()
-    return jsonify({"ok": True, "active_visit": visit, "recent_names": names})
+    visit   = db.get_active_carer_visit()
+    names   = db.get_recent_carer_names()
+    raw     = db.get_state("modules_enabled")
+    modules = json.loads(raw) if raw else None
+    # null from Laravel means all modules enabled
+    carer_enabled = (modules is None) or ("carer" in modules)
+    return jsonify({"ok": True, "active_visit": visit, "recent_names": names,
+                    "carer_enabled": carer_enabled})
 
 
 @app.route("/api/carer/arrive", methods=["POST"])

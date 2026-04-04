@@ -190,6 +190,9 @@ def _pull_layout(base: str, headers: dict) -> None:
         if r.status_code == 200:
             data = r.json()
             db.set_layout(data.get("layout") or {})
+            # modules_enabled: null from Laravel means all modules on
+            modules = data.get("modules_enabled")
+            db.set_state("modules_enabled", json.dumps(modules))
     except Exception as e:
         log.warning(f"Layout sync failed: {e}")
 

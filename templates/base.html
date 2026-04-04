@@ -358,7 +358,7 @@
     try {
       const res  = await fetch('/api/carer/status');
       const data = await res.json();
-      if (!data.ok) return;
+      if (!data.ok || !data.carer_enabled) return;
 
       activeVisit = data.active_visit || null;
       updateCarerButton();

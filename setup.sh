@@ -180,9 +180,7 @@ if grep -qi "bookworm" /etc/os-release 2>/dev/null; then
     # Bookworm / labwc (Wayland) — use labwc autostart file
     LABWC_DIR="${REAL_HOME}/.config/labwc"
     mkdir -p "$LABWC_DIR"
-    echo '#!/bin/bash' > "${LABWC_DIR}/autostart"
-    echo 'sleep 5' >> "${LABWC_DIR}/autostart"
-    echo "${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000 &" >> "${LABWC_DIR}/autostart"
+    printf '#!/bin/bash\nsleep 5\n%s --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --password-store=basic http://localhost:8000 &\n' "${CHROMIUM_BIN}" > "${LABWC_DIR}/autostart"
     chmod +x "${LABWC_DIR}/autostart"
     chown -R "${REAL_USER}:${REAL_USER}" "$LABWC_DIR"
     ok "Kiosk autostart configured (labwc/Bookworm)"
@@ -197,7 +195,7 @@ else
 @xset s noblank
 @xset -dpms
 @unclutter -idle 0.5 -root
-@${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000
+@${CHROMIUM_BIN} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --password-store=basic http://localhost:8000
 EOF
     ok "Kiosk autostart configured (LXDE/X11)"
 fi

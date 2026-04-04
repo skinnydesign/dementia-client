@@ -68,6 +68,7 @@ Tables:
 | `layout_cache` | Which widgets are visible |
 | `sync_queue` | Pending writes to push to Laravel (action, payload JSON) |
 | `sync_state` | Stores `api_token` and `api_base_url` for background thread |
+| `carer_visits` | Local record of carer arrivals/departures (synced to Laravel) |
 
 Key functions:
 - `init_db()` — creates all tables if missing
@@ -83,7 +84,7 @@ Key functions:
 - `trigger()` — runs immediate one-shot sync (called after login)
 - Main sync every **5 minutes**: todos, schedule items, completions, alert, layout
 - iCal sync every **30 minutes**: fetches iCal settings then parses feed
-- `_push_queue()` — pushes pending `complete_todo` and `complete_schedule` actions to Laravel
+- `_push_queue()` — pushes pending `complete_todo`, `complete_schedule`, `carer_arrive`, and `carer_leave` actions to Laravel
 - Token and base_url read from SQLite `sync_state` (set during login, not from Flask session)
 
 ## Flask Routes
@@ -104,6 +105,9 @@ Key functions:
 | `POST /api/sync` | required | Force immediate sync |
 | `GET /api/wifi/scan` | public | Scan WiFi networks (Pi only, fails gracefully in Docker) |
 | `POST /api/wifi/connect` | public | Connect to WiFi (Pi only) |
+| `GET /api/carer/status` | required | Returns active carer visit or null |
+| `POST /api/carer/arrive` | required | Record carer arrival (name required) |
+| `POST /api/carer/leave` | required | Record carer departure |
 
 ## Laravel API Endpoints Used
 | Purpose | Laravel route | Notes |
@@ -140,12 +144,29 @@ The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly
 - Timezone-aware datetimes converted to local time before storage
 - Timed events show time (e.g. "27 Mar 14:30"); all-day events show date only
 
+## Carer Visit System
+- Carer presses a button (fixed bottom-left in `base.html`) to check in/out
+- Check-in shows a modal to enter their name; check-out confirms departure
+- Visit stored locally in `carer_visits` table, then synced to Laravel via `POST /api/carer-visits` and `PUT /api/carer-visits/{id}/leave`
+- Laravel `CarerVisitHistory` Livewire page at `/carer-visits` shows full history with search and date filter
+
+## Raspberry Pi Deployment (`setup.sh`)
+- Run once on a fresh Raspberry Pi OS (Bookworm) install: `sudo bash setup.sh`
+- Prompts for `API_BASE_URL` and optional `SECRET_KEY` (auto-generated if blank)
+- Auto-detects the real username via `$SUDO_USER`
+- Detects `chromium` vs `chromium-browser` package name (Bookworm vs Bullseye)
+- Clones repo to `~/dementia-client`, creates venv, installs requirements
+- Writes `.env`, creates systemd service (`dementia-client`), enables auto-login
+- **Kiosk autostart (Bookworm/labwc)**: writes `~/.config/labwc/autostart` — a bash script that runs `chromium --kiosk http://localhost:8000 &` after a 5s delay
+- **Kiosk autostart (Bullseye/LXDE)**: writes `/etc/xdg/lxsession/LXDE-pi/autostart`
+- Disables screen blanking via `consoleblank=0` in `/boot/firmware/cmdline.txt`
+
 ## Known Quirks
 - Laravel todo resource is named `apiTodos` (not `todos`) — all API calls use this path
 - Todo field is `todo` (not `title`), completion is `completed` boolean
 - `GET /api/apiTodos` returns paginated — actual items are at `data.data`
 - Delete is removed from the UI — todos can only be marked complete
-- WiFi scan/connect uses `nmcli` and won't work inside Docker (graceful failure)
+- WiFi scan/connect uses `wpa_cli`/`iwgetid` (not `nmcli`) — won't work inside Docker (graceful failure)
 - Multiple gunicorn workers each run their own sync thread — WAL mode handles concurrent SQLite writes
 
 ## Config
