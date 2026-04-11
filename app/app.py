@@ -447,6 +447,15 @@ def api_force_sync():
     return jsonify({"ok": True, "message": "Sync triggered."})
 
 
+@app.route("/api/system/update", methods=["POST"])
+@login_required
+def api_system_update():
+    """Trigger a git pull + restart immediately (runs in background thread)."""
+    import threading
+    threading.Thread(target=sync._do_update, daemon=True).start()
+    return jsonify({"ok": True, "message": "Update started."})
+
+
 @app.route("/api/carer/status")
 @login_required
 def api_carer_status():

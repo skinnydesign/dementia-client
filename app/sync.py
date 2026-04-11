@@ -6,6 +6,9 @@ Pending writes (completions) are pushed to Laravel when online.
 
 import json
 import logging
+import os
+import signal as _signal
+import subprocess
 import threading
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -35,6 +38,26 @@ def start() -> None:
 def trigger() -> None:
     """Run a sync immediately in a one-shot thread (e.g. after login)."""
     threading.Thread(target=_run, daemon=True, name="sync-now").start()
+
+
+def _do_update() -> None:
+    """Run git pull in the install directory then signal gunicorn to restart."""
+    install_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    log.info("Updating: git pull in %s", install_dir)
+    result = subprocess.run(
+        ['git', '-C', install_dir, 'pull'],
+        capture_output=True, text=True
+    )
+    log.info("git pull stdout: %s", result.stdout.strip())
+    if result.returncode != 0:
+        log.error("git pull failed: %s", result.stderr.strip())
+        return
+    # Kill gunicorn master — systemd Restart=always brings it back up.
+    # In Docker, --reload watches for file changes automatically.
+    try:
+        os.kill(os.getppid(), _signal.SIGTERM)
+    except Exception as e:
+        log.warning("Could not signal gunicorn master: %s", e)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -71,6 +94,10 @@ def _run() -> None:
         log.info("Sync complete.")
     except Exception as e:
         log.warning(f"Sync failed: {e}")
+
+    if db.get_state("pending_update") == "1":
+        db.set_state("pending_update", None)
+        _do_update()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -195,6 +222,8 @@ def _pull_layout(base: str, headers: dict) -> None:
             modules = data.get("modules_enabled")
             db.set_state("modules_enabled", json.dumps(modules))
             db.set_state("app_timezone", data.get("timezone") or "UTC")
+            if data.get("needs_update"):
+                db.set_state("pending_update", "1")
     except Exception as e:
         log.warning(f"Layout sync failed: {e}")
 
