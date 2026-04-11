@@ -120,6 +120,9 @@
     activeInput = null;
   }
 
+  window.oskShow = showKeyboard;
+  window.oskHide = hideKeyboard;
+
   // Attach to every [data-osk] input on the page
   document.querySelectorAll('input[data-osk]').forEach(function (inp) {
     inp.addEventListener('focus', function () { showKeyboard(inp); });
@@ -168,8 +171,9 @@
   // Done button — behaviour driven by data attributes on the active input
   doneBtn.addEventListener('click', function () {
     if (!activeInput) { hideKeyboard(); return; }
-    var nextSel = activeInput.getAttribute('data-osk-next');
+    var nextSel  = activeInput.getAttribute('data-osk-next');
     var doSubmit = activeInput.getAttribute('data-osk-submit') === 'true';
+    var callback = activeInput.getAttribute('data-osk-callback');
     if (nextSel) {
       var next = document.querySelector(nextSel);
       if (next) { next.focus(); activeInput = next; return; }
@@ -181,6 +185,9 @@
       return;
     }
     hideKeyboard();
+    if (callback && typeof window[callback] === 'function') {
+      window[callback]();
+    }
   });
 
   // Tap outside hides keyboard

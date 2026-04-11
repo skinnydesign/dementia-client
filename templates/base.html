@@ -155,7 +155,8 @@
       <input id="carer-name-input" type="text" placeholder="Your name"
              class="w-full bg-raised border border-[#2a2a2a] rounded-lg px-4 py-3 text-[#e8e8e8] font-mono text-sm
                     placeholder-[#444444] focus:outline-none focus:border-amber-500 transition-colors mb-4"
-             autocomplete="off">
+             autocomplete="off" inputmode="none"
+             data-osk data-osk-callback="carerCheckIn">
 
       <div class="flex gap-3">
         <button onclick="carerCheckIn()"
@@ -190,6 +191,8 @@
     {{ _icon('settings') }}
   </a>
   {% endif %}
+
+  {% include 'widgets/osk.html' %}
 
 </div>
 {% else %}
@@ -413,7 +416,11 @@
       carerLeave();
     } else {
       document.getElementById('carer-modal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('carer-name-input').focus(), 50);
+      setTimeout(() => {
+        var inp = document.getElementById('carer-name-input');
+        inp.focus();
+        if (window.oskShow) window.oskShow(inp);
+      }, 50);
     }
   };
 
@@ -423,6 +430,7 @@
   };
 
   window.closecCarerModal = function() {
+    if (window.oskHide) window.oskHide();
     document.getElementById('carer-modal').classList.add('hidden');
     document.getElementById('carer-name-input').value = '';
   };
