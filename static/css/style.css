@@ -3,6 +3,9 @@
    Layout and components are handled by Tailwind CSS
    ═══════════════════════════════════════════════════════ */
 
+/* ── Base ───────────────────────────────────────────── */
+html { height: 100%; }
+
 /* ── Scrollbar ──────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

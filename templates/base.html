@@ -63,7 +63,7 @@
 <body class="bg-surface text-[#E8E6E3] font-sans font-semibold text-[1rem] leading-relaxed tracking-[0.02em] overflow-hidden w-full h-full">
 
 {% if session.get('api_token') %}
-<div class="w-screen h-screen overflow-hidden relative">
+<div class="w-full h-full overflow-hidden relative">
 
   <!-- Flash messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
