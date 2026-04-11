@@ -63,6 +63,8 @@
         <div id="password-group">
           <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-1.5">PASSWORD</label>
           <input type="password" id="wifi-password"
+                 inputmode="none"
+                 data-osk
                  class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#e8e8e8] font-mono
                         placeholder-[#666666] focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
                  placeholder="Network password">
@@ -203,4 +205,6 @@ function setStatus(msg, type) {
   el.textContent = msg;
 }
 </script>
+
+{% include 'widgets/osk.html' %}
 {% endblock %}

@@ -328,12 +328,13 @@ def login():
 
     error = None
     if request.method == "POST":
-        email    = request.form.get("email", "").strip()
+        login    = request.form.get("login", "").strip()
         password = request.form.get("password", "")
-        if not email or not password:
-            error = "Email and password are required."
+        if not login or not password:
+            error = "Email or username and password are required."
         else:
-            status, data = laravel_post("token", {"email": email, "password": password})
+            credential = {"email": login} if "@" in login else {"username": login}
+            status, data = laravel_post("token", {**credential, "password": password})
             if status == 200:
                 token = (data.get("token") or data.get("access_token") or
                          data.get("data", {}).get("token", ""))
@@ -343,8 +344,8 @@ def login():
                     error = "Login succeeded but no token was returned."
                 else:
                     session["api_token"]  = token
-                    session["user_name"]  = user.get("name", email)
-                    session["user_email"] = user.get("email", email)
+                    session["user_name"]  = user.get("name", login)
+                    session["user_email"] = user.get("email", login)
 
                     # Store credentials for background sync
                     db.set_state("api_token",   token)
@@ -576,9 +577,13 @@ def api_complete_todo(todo_id):
 @app.route("/api/schedule/due")
 @login_required
 def api_schedule_due():
+    suspended = db.get_state("schedules_suspended") == "1"
+    if suspended:
+        return jsonify({"ok": True, "suspended": True, "items": []})
     items = db.get_due_items()
     return jsonify({
-        "ok":    True,
+        "ok":        True,
+        "suspended": False,
         "items": [
             {
                 "id":             i["id"],

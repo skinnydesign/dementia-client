@@ -15,17 +15,26 @@ app/
   db.py         — SQLite operations: init, reads, writes, sync queue
   sync.py       — background thread: polls Laravel every 5 min, iCal every 30 min
 templates/
-  base.html     — shared layout (no sidebar), settings cog fixed bottom-right
+  base.html     — shared layout, settings cog (or back arrow on settings page) fixed bottom-right
   login.html    — unauthenticated login page (has WiFi setup link)
   wifi_setup.html — public WiFi scan/connect page
-  todos.html    — main display (todos, schedule, iCal panels)
-  index.html    — settings page (module visibility, account)
+  dashboard.html — main kiosk display (todos, schedule, iCal panels)
+  index.html    — settings page (WiFi, account, display)
   widgets/
-    todos.html    — incomplete todos widget
+    todos.html    — incomplete todos widget (full-row tap to complete)
     schedule.html — due schedule items widget
     ical.html     — upcoming iCal events widget
+    clock.html    — clock/date widget
 static/
-  css/style.css — custom animations (alarmFlash, alarmPulseIcon, alarmShake)
+  css/
+    style.css   — custom animations (alarmFlash, alarmPulseIcon, alarmShake)
+    fonts.css   — @font-face declarations for Atkinson Hyperlegible, DM Sans, JetBrains Mono
+  fonts/        — self-hosted font files (Atkinson Hyperlegible, DM Sans, JetBrains Mono)
+tests/
+  conftest.py   — pytest fixtures (temp DB, patched sync.start, Flask test client)
+  test_db.py    — unit tests for all db.py functions
+  test_routes.py — Flask route tests (auth, API endpoints, page rendering)
+  test_sync.py  — sync pull/push logic tests (all HTTP calls mocked)
 data/           — persistent SQLite DB (git-ignored, survives container restarts)
 ```
 
@@ -40,6 +49,7 @@ data/           — persistent SQLite DB (git-ignored, survives container restar
   - `./static` → `/app/static` (CSS/JS)
   - `./data` → `/data` (SQLite DB, `DATA_DIR=/data`)
 - External `proxy` network must exist before starting: `docker network create proxy`
+- **Note**: `app/templates/` and `app/static/` are empty Docker mount-point directories on the host — the real files live at the root-level `templates/` and `static/`
 
 ## Entry Point
 - `app/app.py` — single-file flat Flask app (not blueprints)
@@ -47,7 +57,8 @@ data/           — persistent SQLite DB (git-ignored, survives container restar
 - On startup: `db.init_db()` creates tables, `sync.start()` launches background thread
 
 ## Auth
-- Login via `POST /api/token` (Sanctum) with `{email, password}`
+- Login via `POST /api/token` (Sanctum) with `{email, password}` **or** `{username, password}`
+- The login form has a single `login` field; the app detects `@` in the value to decide whether to send `email` or `username` to Laravel
 - Response returns `token`, `expires_at`, and `user` object
 - Token stored in Flask session as `session["api_token"]`; also stored in SQLite `sync_state` table for background thread access
 - On login: stores token + base_url in DB, triggers immediate sync via `sync.trigger()`
@@ -55,7 +66,7 @@ data/           — persistent SQLite DB (git-ignored, survives container restar
 - All protected routes use `@login_required` decorator
 
 ## SQLite Database (`app/db.py`)
-Database lives at `$DATA_DIR/app.sqlite` (default `/data/app.sqlite`). WAL mode for concurrent access.
+Database lives at `$DATA_DIR/control.db` (default `~/control.db`). WAL mode for concurrent access.
 
 Tables:
 | Table | Purpose |
@@ -90,16 +101,16 @@ Key functions:
 ## Flask Routes
 | Route | Auth | Purpose |
 |---|---|---|
-| `GET /` | required | Redirects to `/todos` |
+| `GET /` | required | Redirects to `/dashboard` |
 | `GET /login` | public | Login form |
 | `POST /login` | public | Authenticate, store token, trigger sync |
 | `POST /logout` | required | Clear session + sync_state |
-| `GET /todos` | required | Main display page |
-| `GET /settings` | required | Module visibility settings |
+| `GET /dashboard` | required | Main kiosk display page |
+| `GET /settings` | required | WiFi, account, display settings |
 | `GET /wifi-setup` | **public** | WiFi scan/connect (Pi only) |
 | `GET /api/todos` | required | Serve todos from SQLite |
 | `GET /api/schedule/due` | required | Serve due schedule items from SQLite |
-| `POST /api/schedule/<id>/complete` | required | Mark done locally + enqueue push |
+| `PUT /api/schedule/<id>/complete` | required | Mark done locally + enqueue push |
 | `GET /api/alert` | required | Serve active alert from SQLite |
 | `GET /api/ical` | required | Serve iCal events from SQLite |
 | `POST /api/sync` | required | Force immediate sync |
@@ -120,12 +131,14 @@ Key functions:
 | Complete schedule | `PUT /api/schedule/<id>/complete` | Creates completion record + updates last_completed_at |
 | Fetch alert | `GET /api/alert` | Returns active alert or empty |
 | Fetch layout | `GET /api/layout` | Module visibility settings |
-| Fetch iCal settings | `GET /api/ical/settings` | Returns ical_url, ical_days |
+| Fetch iCal settings | `GET /api/ical` | Returns ical_url, ical_days |
 
 ## Schedule System
 Schedule items have: `name`, `frequency` (daily/every_other_day/weekly), `day_of_week` (weekly only), `scheduled_time`, `last_completed_at`, `is_active`, `overdue_threshold` (nullable int, minutes after due time to flag as overdue).
 
 The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly so offline detection works.
+
+**Suspend/pause feature**: Schedules can be paused via the Laravel admin UI (`/schedule/settings`). The Laravel `ScheduleController` returns `suspended: true` with an empty `items` list when paused; `sync.py` stores this in `sync_state` as `schedules_suspended`. The schedule widget displays "Schedules paused" instead of the alarm overlay. Suspensions can be indefinite or until a specific date (auto-cleared server-side when the date passes).
 
 **Alarm behaviour** (in `base.html` JS):
 - `checkSchedule()` polls `/api/schedule/due` every 60s
@@ -150,6 +163,27 @@ The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly
 - Visit stored locally in `carer_visits` table, then synced to Laravel via `POST /api/carer-visits` and `PUT /api/carer-visits/{id}/leave`
 - Laravel `CarerVisitHistory` Livewire page at `/carer-visits` shows full history with search and date filter
 
+## Accessibility / UI
+The UI is designed for users with dementia and age-related sight impairment:
+- **Font**: Atkinson Hyperlegible (Braille Institute) as primary sans-serif, DM Sans as fallback; JetBrains Mono for UI labels and timestamps only
+- **Base font size**: 20px default (adjustable in settings via localStorage)
+- **Body**: `font-semibold`, `tracking-[0.02em]` globally
+- **Colours**: surface `#161616`, panel `#1e1e1e`, raised `#252525`; primary text `#E8E6E3`; secondary text `#aaaaaa` (~6:1 contrast); item dividers `#333333`
+- **Todo items**: full-row tap target (click anywhere on row to complete); 24px checkbox
+- **Settings page**: bottom-right button shows a back arrow (→ `/dashboard`) when on settings, gear icon on all other pages
+
+## Testing
+Run the full test suite (91 tests, ~0.7s) from the project root:
+```bash
+python3 -m pytest
+```
+- `tests/conftest.py` — temp SQLite DB, sync thread patched out, Flask test client fixtures
+- `tests/test_db.py` — all database functions including `is_due` logic for all frequency types
+- `tests/test_routes.py` — every route: auth flow, API endpoints, page rendering, offline behaviour
+- `tests/test_sync.py` — pull/push helpers with mocked HTTP; full `_run` cycle
+
+Tests run against the host Python (3.9+). The `from __future__ import annotations` import in `db.py` ensures type hints are compatible with Python 3.9.
+
 ## Raspberry Pi Deployment (`setup.sh`)
 - Run once on a fresh Raspberry Pi OS (Bookworm) install: `sudo bash setup.sh`
 - Prompts for `API_BASE_URL` and optional `SECRET_KEY` (auto-generated if blank)
@@ -160,6 +194,7 @@ The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly
 - **Kiosk autostart (Bookworm/labwc)**: writes `~/.config/labwc/autostart` — a bash script that runs `chromium --kiosk http://localhost:8000 &` after a 5s delay
 - **Kiosk autostart (Bullseye/LXDE)**: writes `/etc/xdg/lxsession/LXDE-pi/autostart`
 - Disables screen blanking via `consoleblank=0` in `/boot/firmware/cmdline.txt`
+- WiFi is configured through the in-app `/wifi-setup` page — do not use FullPageOS or other kiosk OSes as they require WiFi to be pre-configured before deployment
 
 ## Known Quirks
 - Laravel todo resource is named `apiTodos` (not `todos`) — all API calls use this path
@@ -168,9 +203,11 @@ The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly
 - Delete is removed from the UI — todos can only be marked complete
 - WiFi scan/connect uses `wpa_cli`/`iwgetid` (not `nmcli`) — won't work inside Docker (graceful failure)
 - Multiple gunicorn workers each run their own sync thread — WAL mode handles concurrent SQLite writes
+- DB filename is `control.db` (not `app.sqlite` as earlier versions used)
+- `app/templates/` and `app/static/` on the host are empty Docker mount-point directories — tests override `template_folder` and `static_folder` to point at the real root-level directories
 
 ## Config
 - `API_BASE_URL` — set in `.env`, stored in SQLite `sync_state` after login
 - `SECRET_KEY` — set in `.env`
-- `DATA_DIR` — set in `.env` (default `/data`)
+- `DATA_DIR` — set in `.env` (default `/data` in Docker, `~` on bare Pi)
 - See `.env.example` for template

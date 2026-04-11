@@ -32,21 +32,36 @@
         </div>
       {% endif %}
 
-      <form method="POST" action="{{ url_for('login') }}" class="flex flex-col gap-5">
+      <form method="POST" action="{{ url_for('login') }}" class="flex flex-col gap-5" id="login-form">
         <div>
-          <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-2">EMAIL ADDRESS</label>
-          <input type="email" name="email"
+          <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-2">EMAIL OR USERNAME</label>
+          <input type="text" name="login" id="input-login"
+                 inputmode="none"
+                 data-osk
+                 data-osk-next="#input-password"
                  class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#e8e8e8] font-mono
                         placeholder-[#666666] focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
-                 placeholder="you@example.com" autocomplete="email" required>
+                 placeholder="you@example.com or username" autocomplete="off" required>
         </div>
 
         <div>
-          <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-2">PASSWORD</label>
-          <input type="password" name="password"
-                 class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#e8e8e8] font-mono
-                        placeholder-[#666666] focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
-                 placeholder="••••••••" autocomplete="current-password" required>
+          <label class="block font-mono text-[#666666] mb-2" style="font-size:10px; letter-spacing:0.12em;">PASSWORD</label>
+          <div class="relative">
+            <input type="password" name="password" id="input-password"
+                   inputmode="none"
+                   data-osk
+                   data-osk-submit="true"
+                   class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#e8e8e8] font-mono
+                          placeholder-[#666666] focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors pr-10"
+                   placeholder="••••••••" autocomplete="off" required>
+            <button type="button" id="toggle-pw"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-[#666666] hover:text-[#e8e8e8] transition-colors p-1"
+                    tabindex="-1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <button type="submit"
@@ -78,4 +93,14 @@
     </div>
   </div>
 </div>
+
+<script>
+// Password show/hide toggle
+document.getElementById('toggle-pw').addEventListener('click', function () {
+  var pw = document.getElementById('input-password');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+});
+</script>
+
+{% include 'widgets/osk.html' %}
 {% endblock %}

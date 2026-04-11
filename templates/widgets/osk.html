@@ -1,0 +1,200 @@
+{# On-screen keyboard partial
+   Usage: add inputmode="none" and data-osk to any <input> you want handled.
+   Optional attributes:
+     data-osk-next="#other-id"   — "done" moves focus to that input
+     data-osk-submit="true"      — "done" submits the closest <form>
+#}
+
+<!-- On-screen keyboard -->
+<div id="osk" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+     background:#1a1a1a; border-top:1px solid #333; padding:10px 8px 14px; user-select:none;">
+  <div id="osk-letters">
+    <!-- Numbers row -->
+    <div class="osk-row" style="display:flex; gap:5px; margin-bottom:5px; justify-content:center;">
+      <button type="button" class="osk-key osk-num" data-char="1">1</button>
+      <button type="button" class="osk-key osk-num" data-char="2">2</button>
+      <button type="button" class="osk-key osk-num" data-char="3">3</button>
+      <button type="button" class="osk-key osk-num" data-char="4">4</button>
+      <button type="button" class="osk-key osk-num" data-char="5">5</button>
+      <button type="button" class="osk-key osk-num" data-char="6">6</button>
+      <button type="button" class="osk-key osk-num" data-char="7">7</button>
+      <button type="button" class="osk-key osk-num" data-char="8">8</button>
+      <button type="button" class="osk-key osk-num" data-char="9">9</button>
+      <button type="button" class="osk-key osk-num" data-char="0">0</button>
+    </div>
+    <!-- Row 1 -->
+    <div class="osk-row" style="display:flex; gap:5px; margin-bottom:5px; justify-content:center;">
+      <button type="button" class="osk-key" data-char="q">q</button>
+      <button type="button" class="osk-key" data-char="w">w</button>
+      <button type="button" class="osk-key" data-char="e">e</button>
+      <button type="button" class="osk-key" data-char="r">r</button>
+      <button type="button" class="osk-key" data-char="t">t</button>
+      <button type="button" class="osk-key" data-char="y">y</button>
+      <button type="button" class="osk-key" data-char="u">u</button>
+      <button type="button" class="osk-key" data-char="i">i</button>
+      <button type="button" class="osk-key" data-char="o">o</button>
+      <button type="button" class="osk-key" data-char="p">p</button>
+    </div>
+    <!-- Row 2 -->
+    <div class="osk-row" style="display:flex; gap:5px; margin-bottom:5px; justify-content:center;">
+      <button type="button" class="osk-key" data-char="a">a</button>
+      <button type="button" class="osk-key" data-char="s">s</button>
+      <button type="button" class="osk-key" data-char="d">d</button>
+      <button type="button" class="osk-key" data-char="f">f</button>
+      <button type="button" class="osk-key" data-char="g">g</button>
+      <button type="button" class="osk-key" data-char="h">h</button>
+      <button type="button" class="osk-key" data-char="j">j</button>
+      <button type="button" class="osk-key" data-char="k">k</button>
+      <button type="button" class="osk-key" data-char="l">l</button>
+    </div>
+    <!-- Row 3 -->
+    <div class="osk-row" style="display:flex; gap:5px; margin-bottom:5px; justify-content:center;">
+      <button type="button" class="osk-key osk-action" id="osk-shift" style="min-width:52px;">⇧</button>
+      <button type="button" class="osk-key" data-char="z">z</button>
+      <button type="button" class="osk-key" data-char="x">x</button>
+      <button type="button" class="osk-key" data-char="c">c</button>
+      <button type="button" class="osk-key" data-char="v">v</button>
+      <button type="button" class="osk-key" data-char="b">b</button>
+      <button type="button" class="osk-key" data-char="n">n</button>
+      <button type="button" class="osk-key" data-char="m">m</button>
+      <button type="button" class="osk-key osk-action" id="osk-back" style="min-width:52px;">⌫</button>
+    </div>
+    <!-- Row 4: symbols + space + done -->
+    <div class="osk-row" style="display:flex; gap:5px; justify-content:center;">
+      <button type="button" class="osk-key osk-sym" data-char="@">@</button>
+      <button type="button" class="osk-key osk-sym" data-char=".">.</button>
+      <button type="button" class="osk-key osk-sym" data-char="-">-</button>
+      <button type="button" class="osk-key osk-sym" data-char="_">_</button>
+      <button type="button" class="osk-key osk-sym" data-char="!">!</button>
+      <button type="button" class="osk-key osk-sym" data-char="#">#</button>
+      <button type="button" class="osk-key" data-char=" " style="flex:1; max-width:140px;">space</button>
+      <button type="button" class="osk-key osk-done" id="osk-done" style="min-width:64px; background:#d97706; color:#000;">done</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.osk-key {
+  min-width: 36px;
+  height: 46px;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #e8e6e3;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  transition: background 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.osk-key:active { background: #3d3d3d; }
+.osk-key.osk-action { background: #333; color: #aaa; }
+.osk-key.osk-sym   { color: #f59e0b; min-width: 36px; }
+.osk-key.osk-num   { color: #aaa; font-size: 14px; }
+#osk-shift.active  { background: #d97706; color: #000; }
+</style>
+
+<script>
+(function () {
+  var osk      = document.getElementById('osk');
+  var shiftBtn = document.getElementById('osk-shift');
+  var backBtn  = document.getElementById('osk-back');
+  var doneBtn  = document.getElementById('osk-done');
+  var shifted  = false;
+  var activeInput = null;
+
+  function showKeyboard(inp) {
+    activeInput = inp;
+    osk.style.display = 'block';
+  }
+
+  function hideKeyboard() {
+    osk.style.display = 'none';
+    if (activeInput) activeInput.blur();
+    activeInput = null;
+  }
+
+  // Attach to every [data-osk] input on the page
+  document.querySelectorAll('input[data-osk]').forEach(function (inp) {
+    inp.addEventListener('focus', function () { showKeyboard(inp); });
+    inp.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      inp.focus();
+    }, { passive: false });
+  });
+
+  // Shift
+  shiftBtn.addEventListener('click', function () {
+    shifted = !shifted;
+    shiftBtn.classList.toggle('active', shifted);
+    document.querySelectorAll('.osk-key[data-char]').forEach(function (btn) {
+      var ch = btn.getAttribute('data-char');
+      if (ch && ch.length === 1 && ch.match(/[a-z]/i)) {
+        btn.textContent = shifted ? ch.toUpperCase() : ch.toLowerCase();
+      }
+    });
+  });
+
+  // Backspace
+  backBtn.addEventListener('click', function () {
+    if (!activeInput) return;
+    activeInput.value = activeInput.value.slice(0, -1);
+  });
+
+  // Character keys
+  document.querySelectorAll('.osk-key[data-char]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!activeInput) return;
+      var ch = btn.getAttribute('data-char');
+      if (shifted && ch.match(/[a-z]/i)) {
+        ch = ch.toUpperCase();
+        shifted = false;
+        shiftBtn.classList.remove('active');
+        document.querySelectorAll('.osk-key[data-char]').forEach(function (b) {
+          var c = b.getAttribute('data-char');
+          if (c && c.length === 1 && c.match(/[a-z]/i)) b.textContent = c.toLowerCase();
+        });
+      }
+      activeInput.value += ch;
+    });
+  });
+
+  // Done button — behaviour driven by data attributes on the active input
+  doneBtn.addEventListener('click', function () {
+    if (!activeInput) { hideKeyboard(); return; }
+    var nextSel = activeInput.getAttribute('data-osk-next');
+    var doSubmit = activeInput.getAttribute('data-osk-submit') === 'true';
+    if (nextSel) {
+      var next = document.querySelector(nextSel);
+      if (next) { next.focus(); activeInput = next; return; }
+    }
+    if (doSubmit) {
+      var form = activeInput.closest('form');
+      hideKeyboard();
+      if (form) form.submit();
+      return;
+    }
+    hideKeyboard();
+  });
+
+  // Tap outside hides keyboard
+  document.addEventListener('touchstart', function (e) {
+    if (osk.style.display === 'none') return;
+    if (!osk.contains(e.target) && !e.target.hasAttribute('data-osk')) {
+      hideKeyboard();
+    }
+  }, { passive: true });
+  document.addEventListener('mousedown', function (e) {
+    if (osk.style.display === 'none') return;
+    if (!osk.contains(e.target) && !e.target.hasAttribute('data-osk')) {
+      hideKeyboard();
+    }
+  });
+})();
+</script>

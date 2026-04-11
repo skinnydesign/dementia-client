@@ -4,7 +4,7 @@ A Python/Flask dashboard designed to run on a Raspberry Pi as an always-on displ
 
 ## Features
 
-- **Todos** — shows pending todos synced from the Laravel app
+- **Todos** — shows pending todos synced from the Laravel app; tap anywhere on a row to mark complete
 - **Schedule** — recurring reminders (daily / every other day / weekly) with a full-screen alarm popup and sound when due
 - **Calendar** — upcoming events from a Google Calendar iCal feed
 - **Alerts** — instant messages pushed from the Laravel app to the display
@@ -12,6 +12,7 @@ A Python/Flask dashboard designed to run on a Raspberry Pi as an always-on displ
 - **WiFi setup** — scan and connect to networks from the login screen (no login required)
 - **Offline support** — all data served from local SQLite cache, synced every 5 minutes when online
 - **Offline writes** — marking todos/schedule complete works offline and syncs when reconnected
+- **Accessibility** — Atkinson Hyperlegible font, 20px base size, high-contrast colours, large tap targets
 
 ## Requirements
 
@@ -49,7 +50,7 @@ Docker is not recommended on the Pi Zero due to limited RAM (512MB). Use the set
 
 ### 1. Flash Raspberry Pi OS
 
-Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash **Raspberry Pi OS with Desktop** to your SD card. In the imager's advanced options you can pre-configure your WiFi credentials and enable SSH so you don't need a keyboard/monitor for setup.
+Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash **Raspberry Pi OS with Desktop** to your SD card. In the imager's advanced options you can enable SSH for headless setup. Leave WiFi blank — end users connect via the in-app WiFi setup page once the Pi is running.
 
 ### 2. Boot and run the setup script
 
@@ -124,23 +125,31 @@ dementia-client/
 │   ├── db.py           # SQLite cache — all reads/writes
 │   └── sync.py         # Background sync from Laravel (every 5 min)
 ├── static/
-│   ├── css/style.css   # Animations and scrollbar only (layout is Tailwind)
+│   ├── css/
+│   │   ├── style.css   # Animations and scrollbar only (layout is Tailwind)
+│   │   └── fonts.css   # @font-face declarations
+│   ├── fonts/          # Self-hosted font files (Atkinson Hyperlegible, DM Sans, JetBrains Mono)
 │   └── js/app.js       # Flash message auto-dismiss
 ├── templates/
 │   ├── base.html       # Shared layout, schedule alarm, alert banner
 │   ├── login.html      # Sign in page (includes WiFi setup link)
 │   ├── wifi_setup.html # WiFi setup (no login required)
-│   ├── dashboard.html  # Configurable widget layout page
-│   ├── todos.html      # Todos + schedule + calendar page
-│   ├── index.html      # Settings page
+│   ├── dashboard.html  # Main kiosk display page
+│   ├── index.html      # Settings page (WiFi, account, display)
 │   └── widgets/
 │       ├── clock.html
 │       ├── todos.html
 │       ├── schedule.html
 │       └── ical.html
+├── tests/
+│   ├── conftest.py     # Pytest fixtures
+│   ├── test_db.py      # Database function tests
+│   ├── test_routes.py  # Flask route tests
+│   └── test_sync.py    # Sync logic tests
 ├── data/               # SQLite database (git-ignored)
 ├── docker-compose.yml
 ├── Dockerfile
+├── pytest.ini
 └── requirements.txt
 ```
 
@@ -163,6 +172,17 @@ WiFi scan and connect uses `wpa_cli` and `iwgetid`, which are included with `wpa
 The WiFi setup page is available at `/wifi-setup` **without logging in**, so users can connect the device to their network before signing in.
 
 > **Note:** Raspberry Pi OS Bookworm (2023+) switched to NetworkManager by default. If you are running Bookworm, `wpa_cli` may not be active. You can either switch back to wpa_supplicant or install NetworkManager and adapt the WiFi functions in `app/app.py` to use `nmcli`.
+
+---
+
+## Testing
+
+A full test suite (91 tests) covers the database layer, all Flask routes, and the background sync logic. Tests run against a temporary SQLite database with all HTTP calls mocked — no Laravel server needed.
+
+```bash
+pip install pytest
+python3 -m pytest
+```
 
 ---
 

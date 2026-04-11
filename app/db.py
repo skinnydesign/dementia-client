@@ -1,6 +1,7 @@
 """
 Local SQLite cache — all reads come from here, synced from Laravel in the background.
 """
+from __future__ import annotations
 
 import json
 import os
@@ -242,7 +243,7 @@ def is_due(item: dict, now: datetime = None) -> bool:
             day_map = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
                        "friday": 4, "saturday": 5, "sunday": 6}
             target = day_map.get((item.get("day_of_week") or "").lower(), 0)
-            if date.today().weekday() != target:
+            if now.date().weekday() != target:
                 return False
             if now < today_s:
                 return False

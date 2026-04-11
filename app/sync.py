@@ -149,6 +149,7 @@ def _pull_schedule(base: str, headers: dict) -> None:
             data  = r.json()
             items = data.get("items", [])
             db.upsert_schedule(items)
+            db.set_state("schedules_suspended", "1" if data.get("suspended") else "0")
             # Sync completion history for each item
             for item in items:
                 if item.get("completions"):
