@@ -210,20 +210,21 @@ async function scanWifi() {
 
   try {
     const res  = await fetch('/settings/wifi/scan');
-    const data = await res.json();
-    loading.style.display = 'none';
-
-    if (data.error) {
-      list.innerHTML = `<p class="dim mono">Error: ${data.error}</p>`;
+    const text = await res.text();
+    if (!res.ok || text.trimStart().startsWith('<')) {
+      loading.style.display = 'none';
+      list.innerHTML = `<p class="dim mono">Scan failed: HTTP ${res.status}</p>`;
       return;
     }
+    const nets = JSON.parse(text);
+    loading.style.display = 'none';
 
-    if (!data.networks.length) {
+    if (!nets.length) {
       list.innerHTML = `<p class="dim mono">No networks found.</p>`;
       return;
     }
 
-    list.innerHTML = data.networks.map(n => `
+    list.innerHTML = nets.map(n => `
       <div class="wifi-row ${n.in_use ? 'in-use' : ''}" onclick="selectNetwork('${n.ssid.replace(/'/g,"\\'")}', '${n.security}')">
         <div class="wifi-signal" title="${n.signal}%">
           ${signalBars(n.bars)}

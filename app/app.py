@@ -413,6 +413,12 @@ def settings():
                            hidden_modules=hidden)
 
 
+@app.route("/settings/wifi/scan")
+@login_required
+def settings_wifi_scan():
+    return jsonify(scan_wifi())
+
+
 @app.route("/settings/wifi/disconnect", methods=["POST"])
 @login_required
 def wifi_disconnect():
