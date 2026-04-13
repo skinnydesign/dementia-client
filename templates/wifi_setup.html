@@ -111,13 +111,13 @@ async function scanWifi() {
 
   try {
     const res  = await fetch('/api/wifi/scan');
-    if (!res.ok) {
-      const body = await res.text();
+    const text = await res.text();
+    if (!res.ok || text.trimStart().startsWith('<')) {
       loading.style.display = 'none';
-      setStatus(`Scan failed: HTTP ${res.status} — ${body.slice(0, 120)}`, 'error');
+      setStatus(`Scan failed: HTTP ${res.status} — ${text.slice(0, 120)}`, 'error');
       return;
     }
-    const nets = await res.json();
+    const nets = JSON.parse(text);
     loading.style.display = 'none';
 
     if (!nets.length) {
