@@ -111,6 +111,12 @@ async function scanWifi() {
 
   try {
     const res  = await fetch('/api/wifi/scan');
+    if (!res.ok) {
+      const body = await res.text();
+      loading.style.display = 'none';
+      setStatus(`Scan failed: HTTP ${res.status} — ${body.slice(0, 120)}`, 'error');
+      return;
+    }
     const nets = await res.json();
     loading.style.display = 'none';
 
