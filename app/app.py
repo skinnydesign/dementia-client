@@ -72,6 +72,14 @@ def save_config(data):
 #  TEMPLATE CONTEXT
 # ─────────────────────────────────────────────────────────────
 
+@app.after_request
+def no_cache(response):
+    if "text/html" in response.content_type:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+
 @app.context_processor
 def inject_globals():
     nav = [
