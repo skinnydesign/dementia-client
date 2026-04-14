@@ -36,7 +36,7 @@
       {% endif %}
 
       <!-- Scan results injected by JS -->
-      <div id="wifi-list" class="wifi-list"></div>
+      <div id="wifi-list" class="wifi-list max-h-52 overflow-y-auto"></div>
       <div id="wifi-loading" class="hidden flex items-center gap-2 py-4">
         <span class="w-4 h-4 border-2 border-[#2a2a2a] border-t-amber-500 rounded-full animate-spin-slow inline-block"></span>
         <span class="font-mono text-xs text-[#666666]">Scanning…</span>
@@ -54,6 +54,9 @@
         <div class="mb-4" id="wifi-password-group">
           <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-1.5">PASSWORD</label>
           <input type="password" name="password" id="wifi-password"
+                 inputmode="none"
+                 data-osk
+                 data-osk-submit="true"
                  class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2 text-sm text-[#e8e8e8] font-mono placeholder-[#666666] focus:outline-none focus:border-amber-500 transition-colors"
                  placeholder="Leave blank for open networks">
         </div>
@@ -268,4 +271,6 @@ function cancelConnect() {
   document.getElementById('wifi-password').value = '';
 }
 </script>
+
+{% include 'widgets/osk.html' %}
 {% endblock %}
