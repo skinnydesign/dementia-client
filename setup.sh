@@ -136,7 +136,7 @@ ok ".env written"
 
 step "Configuring passwordless sudo for WiFi commands..."
 cat > /etc/sudoers.d/dementia-wifi << EOF
-${REAL_USER} ALL=(ALL) NOPASSWD: /sbin/wpa_cli, /sbin/iwgetid
+${REAL_USER} ALL=(ALL) NOPASSWD: /sbin/wpa_cli, /sbin/iwgetid, /usr/bin/nmcli
 EOF
 chmod 0440 /etc/sudoers.d/dementia-wifi
 ok "Sudoers configured"

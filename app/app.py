@@ -177,11 +177,11 @@ def scan_wifi():
         if OS == "Linux":
             if _use_nmcli():
                 # Trigger a fresh scan, then read results
-                subprocess.run(["nmcli", "dev", "wifi", "rescan"],
+                subprocess.run(["sudo", "nmcli", "dev", "wifi", "rescan"],
                                capture_output=True, timeout=10)
                 time.sleep(2)
                 result = subprocess.run(
-                    ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY",
+                    ["sudo", "nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY",
                      "dev", "wifi", "list"],
                     capture_output=True, text=True, timeout=10
                 )
@@ -279,7 +279,7 @@ def connect_to_wifi(ssid, password=""):
             if _use_nmcli():
                 # nmcli handles WPA handshake + DHCP + routing in one blocking call.
                 # It returns only after the connection is fully up (or fails).
-                cmd = ["nmcli", "dev", "wifi", "connect", ssid,
+                cmd = ["sudo", "nmcli", "dev", "wifi", "connect", ssid,
                        "ifname", WLAN_IFACE]
                 if password:
                     cmd += ["password", password]
