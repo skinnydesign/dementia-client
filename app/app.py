@@ -271,12 +271,13 @@ def connect_to_wifi(ssid, password=""):
                     capture_output=True, timeout=10
                 )
 
-            # Enable, save, and apply
-            subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "enable_network", net_id],
+            # select_network connects immediately; save_config persists across reboots
+            # (requires update_config=1 in wpa_supplicant.conf — fails silently if absent)
+            # Do NOT call reconfigure after save_config: if save failed, reconfigure would
+            # reload from disk and discard the in-memory network we just added.
+            subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "select_network", net_id],
                            capture_output=True, timeout=10)
             subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "save_config"],
-                           capture_output=True, timeout=10)
-            subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "reconfigure"],
                            capture_output=True, timeout=10)
 
             return True, f"Connecting to {ssid}…"
