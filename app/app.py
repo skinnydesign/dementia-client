@@ -319,6 +319,21 @@ def wifi_connect():
     return jsonify({"ok": ok, "message": msg})
 
 
+@app.route("/api/wifi/verify")
+def wifi_verify():
+    """Check if the API server is reachable. Polled by the frontend after WiFi connect."""
+    base_url = load_config().get("api_base_url", "")
+    if not base_url or "your-laravel-app" in base_url:
+        return jsonify({"reachable": False, "message": "API URL not configured"})
+    try:
+        requests.get(base_url, timeout=5)
+        return jsonify({"reachable": True})
+    except requests.exceptions.ConnectionError:
+        return jsonify({"reachable": False, "message": "Cannot reach the API server"})
+    except Exception as e:
+        return jsonify({"reachable": False, "message": str(e)})
+
+
 # ─────────────────────────────────────────────────────────────
 #  ROUTES — AUTH
 # ─────────────────────────────────────────────────────────────

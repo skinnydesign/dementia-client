@@ -185,14 +185,39 @@ async function doConnect() {
     });
     const data = await res.json();
     if (data.ok) {
-      setStatus('Connected to ' + selectedSsid + '. You can now sign in.', 'success');
       cancelConnect();
       document.getElementById('wifi-list').innerHTML = '';
+      setStatus('Joined ' + selectedSsid + '. Waiting for internet…', 'info');
+      await verifyConnectivity(selectedSsid);
     } else {
       setStatus('Failed: ' + (data.message || 'Unknown error'), 'error');
     }
   } catch(e) {
     setStatus('Connection error: ' + e.message, 'error');
+  }
+}
+
+async function verifyConnectivity(ssid, attempt) {
+  attempt = attempt || 0;
+  const max = 15; // up to 30 seconds
+  if (attempt >= max) {
+    setStatus('Joined ' + ssid + ' but could not reach the server — try signing in anyway.', 'info');
+    return;
+  }
+  // Give wpa_supplicant + DHCP a moment before the first check
+  await new Promise(r => setTimeout(r, attempt === 0 ? 3000 : 2000));
+  try {
+    const res  = await fetch('/api/wifi/verify');
+    const data = await res.json();
+    if (data.reachable) {
+      setStatus('Connected! You can now sign in.', 'success');
+    } else {
+      setStatus('Waiting for internet… (' + (attempt + 1) + '/' + max + ')', 'info');
+      await verifyConnectivity(ssid, attempt + 1);
+    }
+  } catch(e) {
+    setStatus('Waiting for internet… (' + (attempt + 1) + '/' + max + ')', 'info');
+    await verifyConnectivity(ssid, attempt + 1);
   }
 }
 
