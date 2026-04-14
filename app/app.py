@@ -280,7 +280,32 @@ def connect_to_wifi(ssid, password=""):
             subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "save_config"],
                            capture_output=True, timeout=10)
 
-            return True, f"Connecting to {ssid}…"
+            # Poll wpa_supplicant for up to 15 seconds to detect success or wrong password.
+            # A bad PSK causes wpa_supplicant to mark the network TEMP-DISABLED within ~5–10s.
+            for _ in range(15):
+                time.sleep(1)
+                st = subprocess.run(
+                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "status"],
+                    capture_output=True, text=True, timeout=5
+                )
+                state = next(
+                    (l.split("=", 1)[1].strip() for l in st.stdout.splitlines()
+                     if l.startswith("wpa_state=")),
+                    ""
+                )
+                if state == "COMPLETED":
+                    return True, f"Connected to {ssid}"
+
+                nets = subprocess.run(
+                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "list_networks"],
+                    capture_output=True, text=True, timeout=5
+                )
+                for line in nets.stdout.splitlines():
+                    parts = line.split("\t")
+                    if len(parts) >= 4 and parts[0] == net_id and "TEMP-DISABLED" in parts[3]:
+                        return False, "Wrong password — authentication failed"
+
+            return False, f"Could not connect to {ssid} — check the password and try again"
 
         elif OS == "Darwin":
             r = subprocess.run(

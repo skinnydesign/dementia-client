@@ -176,7 +176,7 @@ function cancelConnect() {
 async function doConnect() {
   const ssid     = selectedSsid;
   const password = document.getElementById('wifi-password').value;
-  setStatus('Connecting…', 'info');
+  setStatus('Connecting… this may take up to 15 seconds', 'info');
 
   try {
     const res  = await fetch('/api/wifi/connect', {
