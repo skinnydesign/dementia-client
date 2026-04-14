@@ -6,6 +6,7 @@ All data is cached locally in SQLite and synced from Laravel in the background.
 import json
 import os
 import platform
+import re
 import subprocess
 import time
 from datetime import datetime
@@ -157,63 +158,94 @@ def laravel_put(path, payload):
 WLAN_IFACE = "wlan0"
 
 
+def _use_nmcli() -> bool:
+    """True when NetworkManager is active (Raspberry Pi OS Bookworm default)."""
+    try:
+        r = subprocess.run(
+            ["systemctl", "is-active", "--quiet", "NetworkManager"],
+            timeout=5
+        )
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
 def scan_wifi():
     OS = platform.system()
     networks = []
     try:
         if OS == "Linux":
-            # Get current SSID so we can mark it as in-use
-            cur = subprocess.run(
-                ["iwgetid", WLAN_IFACE, "--raw"],
-                capture_output=True, text=True, timeout=5
-            )
-            current_ssid = cur.stdout.strip()
-
-            # Trigger a fresh scan then wait for results
-            subprocess.run(
-                ["sudo", "wpa_cli", "-i", WLAN_IFACE, "scan"],
-                capture_output=True, timeout=5
-            )
-            time.sleep(2)
-
-            result = subprocess.run(
-                ["sudo", "wpa_cli", "-i", WLAN_IFACE, "scan_results"],
-                capture_output=True, text=True, timeout=10
-            )
-
-            seen = set()
-            for line in result.stdout.strip().splitlines():
-                # Skip header lines output by wpa_cli
-                if not line or line.startswith("Selected interface") or line.startswith("bssid"):
-                    continue
-                parts = line.split("\t")
-                if len(parts) < 5:
-                    continue
-                ssid = parts[4].strip()
-                if not ssid or ssid in seen:
-                    continue
-                seen.add(ssid)
-
-                # Signal is dBm (negative); convert to 0-100%
-                dbm = int(parts[2]) if parts[2].lstrip("-").isdigit() else -100
-                pct = max(0, min(100, 2 * (dbm + 100)))
-                flags = parts[3]
-                if "WPA2" in flags:
-                    security = "WPA2"
-                elif "WPA" in flags:
-                    security = "WPA"
-                elif "WEP" in flags:
-                    security = "WEP"
-                else:
-                    security = "Open"
-
-                networks.append({
-                    "ssid":     ssid,
-                    "signal":   pct,
-                    "security": security,
-                    "in_use":   ssid == current_ssid,
-                    "bars":     max(1, min(4, pct // 25)),
-                })
+            if _use_nmcli():
+                # Trigger a fresh scan, then read results
+                subprocess.run(["nmcli", "dev", "wifi", "rescan"],
+                               capture_output=True, timeout=10)
+                time.sleep(2)
+                result = subprocess.run(
+                    ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY",
+                     "dev", "wifi", "list"],
+                    capture_output=True, text=True, timeout=10
+                )
+                seen = set()
+                for line in result.stdout.strip().splitlines():
+                    # terse mode: fields separated by ':'; literal colons escaped as '\:'
+                    parts = re.split(r'(?<!\\):', line, maxsplit=3)
+                    if len(parts) < 4:
+                        continue
+                    in_use   = parts[0].strip() == '*'
+                    ssid     = parts[1].replace('\\:', ':').strip()
+                    sig_str  = parts[2].strip()
+                    security = parts[3].strip() or "Open"
+                    if not ssid or ssid in seen:
+                        continue
+                    seen.add(ssid)
+                    pct = int(sig_str) if sig_str.isdigit() else 0
+                    networks.append({
+                        "ssid":     ssid,
+                        "signal":   pct,
+                        "security": security,
+                        "in_use":   in_use,
+                        "bars":     max(1, min(4, pct // 25)),
+                    })
+            else:
+                # Fallback: wpa_cli (older Pi OS / custom installs)
+                cur = subprocess.run(
+                    ["iwgetid", WLAN_IFACE, "--raw"],
+                    capture_output=True, text=True, timeout=5
+                )
+                current_ssid = cur.stdout.strip()
+                subprocess.run(
+                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "scan"],
+                    capture_output=True, timeout=5
+                )
+                time.sleep(2)
+                result = subprocess.run(
+                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "scan_results"],
+                    capture_output=True, text=True, timeout=10
+                )
+                seen = set()
+                for line in result.stdout.strip().splitlines():
+                    if not line or line.startswith("Selected interface") or line.startswith("bssid"):
+                        continue
+                    parts = line.split("\t")
+                    if len(parts) < 5:
+                        continue
+                    ssid = parts[4].strip()
+                    if not ssid or ssid in seen:
+                        continue
+                    seen.add(ssid)
+                    dbm = int(parts[2]) if parts[2].lstrip("-").isdigit() else -100
+                    pct = max(0, min(100, 2 * (dbm + 100)))
+                    flags = parts[3]
+                    security = ("WPA2" if "WPA2" in flags else
+                                "WPA"  if "WPA"  in flags else
+                                "WEP"  if "WEP"  in flags else "Open")
+                    networks.append({
+                        "ssid":     ssid,
+                        "signal":   pct,
+                        "security": security,
+                        "in_use":   ssid == current_ssid,
+                        "bars":     max(1, min(4, pct // 25)),
+                    })
 
         elif OS == "Darwin":
             airport = ("/System/Library/PrivateFrameworks/Apple80211.framework"
@@ -244,68 +276,86 @@ def connect_to_wifi(ssid, password=""):
     OS = platform.system()
     try:
         if OS == "Linux":
-            # Add a new network entry in wpa_supplicant
-            r = subprocess.run(
-                ["sudo", "wpa_cli", "-i", WLAN_IFACE, "add_network"],
-                capture_output=True, text=True, timeout=10
-            )
-            net_id = r.stdout.strip().splitlines()[-1].strip()
-            if not net_id.isdigit():
-                return False, f"Could not add network (wpa_cli returned: {net_id!r})"
-
-            # Set SSID
-            subprocess.run(
-                ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network", net_id, "ssid", f'"{ssid}"'],
-                capture_output=True, timeout=10
-            )
-
-            # Set credentials
-            if password:
-                subprocess.run(
-                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network", net_id, "psk", f'"{password}"'],
-                    capture_output=True, timeout=10
-                )
-            else:
-                subprocess.run(
-                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network", net_id, "key_mgmt", "NONE"],
-                    capture_output=True, timeout=10
-                )
-
-            # select_network connects immediately; save_config persists across reboots
-            # (requires update_config=1 in wpa_supplicant.conf — fails silently if absent)
-            # Do NOT call reconfigure after save_config: if save failed, reconfigure would
-            # reload from disk and discard the in-memory network we just added.
-            subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "select_network", net_id],
-                           capture_output=True, timeout=10)
-            subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "save_config"],
-                           capture_output=True, timeout=10)
-
-            # Poll wpa_supplicant for up to 15 seconds to detect success or wrong password.
-            # A bad PSK causes wpa_supplicant to mark the network TEMP-DISABLED within ~5–10s.
-            for _ in range(15):
-                time.sleep(1)
-                st = subprocess.run(
-                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "status"],
-                    capture_output=True, text=True, timeout=5
-                )
-                state = next(
-                    (l.split("=", 1)[1].strip() for l in st.stdout.splitlines()
-                     if l.startswith("wpa_state=")),
-                    ""
-                )
-                if state == "COMPLETED":
+            if _use_nmcli():
+                # nmcli handles WPA handshake + DHCP + routing in one blocking call.
+                # It returns only after the connection is fully up (or fails).
+                cmd = ["nmcli", "dev", "wifi", "connect", ssid,
+                       "ifname", WLAN_IFACE]
+                if password:
+                    cmd += ["password", password]
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                if r.returncode == 0:
                     return True, f"Connected to {ssid}"
+                output = (r.stderr or r.stdout).strip()
+                if any(k in output.lower() for k in ("secret", "password", "psk")):
+                    return False, "Wrong password — authentication failed"
+                return False, output or f"Could not connect to {ssid}"
 
-                nets = subprocess.run(
-                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "list_networks"],
-                    capture_output=True, text=True, timeout=5
+            else:
+                # Fallback: wpa_cli path for older Pi OS without NetworkManager
+                r = subprocess.run(
+                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "add_network"],
+                    capture_output=True, text=True, timeout=10
                 )
-                for line in nets.stdout.splitlines():
-                    parts = line.split("\t")
-                    if len(parts) >= 4 and parts[0] == net_id and "TEMP-DISABLED" in parts[3]:
-                        return False, "Wrong password — authentication failed"
+                net_id = r.stdout.strip().splitlines()[-1].strip()
+                if not net_id.isdigit():
+                    return False, f"Could not add network (wpa_cli: {net_id!r})"
+                subprocess.run(
+                    ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network",
+                     net_id, "ssid", f'"{ssid}"'],
+                    capture_output=True, timeout=10
+                )
+                if password:
+                    subprocess.run(
+                        ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network",
+                         net_id, "psk", f'"{password}"'],
+                        capture_output=True, timeout=10
+                    )
+                else:
+                    subprocess.run(
+                        ["sudo", "wpa_cli", "-i", WLAN_IFACE, "set_network",
+                         net_id, "key_mgmt", "NONE"],
+                        capture_output=True, timeout=10
+                    )
+                subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE,
+                                 "select_network", net_id],
+                               capture_output=True, timeout=10)
+                subprocess.run(["sudo", "wpa_cli", "-i", WLAN_IFACE, "save_config"],
+                               capture_output=True, timeout=10)
 
-            return False, f"Could not connect to {ssid} — check the password and try again"
+                wpa_done = False
+                for _ in range(25):
+                    time.sleep(1)
+                    st = subprocess.run(
+                        ["sudo", "wpa_cli", "-i", WLAN_IFACE, "status"],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    state = next(
+                        (l.split("=", 1)[1].strip() for l in st.stdout.splitlines()
+                         if l.startswith("wpa_state=")), ""
+                    )
+                    if state == "COMPLETED":
+                        wpa_done = True
+                        ip_out = subprocess.run(
+                            ["ip", "-4", "addr", "show", WLAN_IFACE],
+                            capture_output=True, text=True, timeout=5
+                        )
+                        if "inet " in ip_out.stdout:
+                            return True, f"Connected to {ssid}"
+                    elif not wpa_done:
+                        nets = subprocess.run(
+                            ["sudo", "wpa_cli", "-i", WLAN_IFACE, "list_networks"],
+                            capture_output=True, text=True, timeout=5
+                        )
+                        for line in nets.stdout.splitlines():
+                            parts = line.split("\t")
+                            if (len(parts) >= 4 and parts[0] == net_id
+                                    and "TEMP-DISABLED" in parts[3]):
+                                return False, "Wrong password — authentication failed"
+
+                if wpa_done:
+                    return False, f"Connected to {ssid} but no IP — check your router"
+                return False, f"Could not connect to {ssid} — check the password and try again"
 
         elif OS == "Darwin":
             r = subprocess.run(
