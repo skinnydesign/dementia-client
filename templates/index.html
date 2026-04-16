@@ -3,184 +3,277 @@
 {% block page_title %}SETTINGS{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-2 gap-4 p-6 max-w-5xl">
+<div class="flex min-h-full">
 
-  <!-- ── WiFi ───────────────────────────────────────────────────────────── -->
-  <div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-3 border-b border-[#2a2a2a]">
-      <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">WIFI NETWORKS</span>
-      <button id="scan-btn" onclick="scanWifi()"
-              class="font-mono text-[10px] tracking-widest text-[#666666] border border-[#2a2a2a] px-3 py-1 rounded
-                     hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors disabled:opacity-40">
-        SCAN
-      </button>
-    </div>
-    <div class="p-5">
+  <!-- ── Sidebar nav ────────────────────────────────────────────────────────── -->
+  <nav class="w-52 flex-shrink-0 border-r border-[#2a2a2a] flex flex-col pt-4 pb-6 gap-1 px-2 min-h-full">
+
+    <button onclick="showSection('wifi')" id="nav-wifi"
+            class="settings-nav-item active">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
+      </svg>
+      <span>WiFi Networks</span>
+    </button>
+
+    <button onclick="showSection('account')" id="nav-account"
+            class="settings-nav-item">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span>Account</span>
+    </button>
+
+    <button onclick="showSection('display')" id="nav-display"
+            class="settings-nav-item">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <span>Display</span>
+    </button>
+
+  </nav>
+
+  <!-- ── Content panels ────────────────────────────────────────────────────── -->
+  <div class="flex-1 overflow-y-auto p-6">
+
+    <!-- ── WiFi ─────────────────────────────────────────────────────────────── -->
+    <div id="section-wifi" class="settings-section max-w-2xl">
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          <h2 class="font-mono text-sm tracking-widest text-[#e8e8e8]">WIFI NETWORKS</h2>
+          <p class="text-[#666666] text-xs mt-0.5">Scan and connect to a wireless network</p>
+        </div>
+        <button id="scan-btn" onclick="scanWifi()"
+                class="font-mono text-[10px] tracking-widest text-[#666666] border border-[#2a2a2a] px-4 py-2 rounded
+                       hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors disabled:opacity-40">
+          SCAN
+        </button>
+      </div>
 
       {% if current_wifi %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded text-green-500 text-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="flex items-center gap-3 mb-5 p-4 bg-green-500/10 border border-green-500/20 rounded-lg text-green-500">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/>
             <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
           </svg>
-          <span class="flex-1 text-xs">Connected to <strong class="text-amber-500">{{ current_wifi }}</strong></span>
-          <form method="POST" action="{{ url_for('wifi_disconnect') }}" class="ml-auto">
+          <span class="flex-1 text-sm">Connected to <strong class="text-amber-500">{{ current_wifi }}</strong></span>
+          <form method="POST" action="{{ url_for('wifi_disconnect') }}">
             <button type="submit"
-                    class="font-mono text-[10px] tracking-widest text-[#666666] border border-[#2a2a2a] px-2 py-1 rounded hover:border-red-500 hover:text-red-500 transition-colors">
+                    class="font-mono text-[10px] tracking-widest text-[#666666] border border-[#2a2a2a] px-3 py-1.5 rounded
+                           hover:border-red-500 hover:text-red-500 transition-colors">
               DISCONNECT
             </button>
           </form>
         </div>
       {% else %}
-        <p class="font-mono text-xs text-[#666666] mb-4">NOT CONNECTED</p>
+        <div class="flex items-center gap-2 mb-5 p-4 bg-[#1e1e1e] border border-[#2a2a2a] rounded-lg">
+          <span class="font-mono text-xs text-[#666666]">NOT CONNECTED</span>
+        </div>
       {% endif %}
 
-      <!-- Scan results injected by JS -->
-      <div id="wifi-list" class="wifi-list max-h-52 overflow-y-auto"></div>
-      <div id="wifi-loading" class="hidden flex items-center gap-2 py-4">
+      <!-- Scan results -->
+      <div id="wifi-loading" class="hidden items-center gap-2 py-4 mb-2">
         <span class="w-4 h-4 border-2 border-[#2a2a2a] border-t-amber-500 rounded-full animate-spin-slow inline-block"></span>
         <span class="font-mono text-xs text-[#666666]">Scanning…</span>
       </div>
+      <div id="wifi-list" class="wifi-list max-h-64 overflow-y-auto"></div>
 
-      <!-- Connect form (shown when network selected) -->
+      <!-- Connect form -->
       <form method="POST" action="{{ url_for('wifi_connect_form') }}"
-            id="wifi-connect-form" class="mt-4 hidden">
-        <div class="mb-3">
-          <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-1.5">CONNECTING TO</label>
-          <input type="text" name="ssid" id="wifi-ssid-input"
-                 class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2 text-sm text-[#e8e8e8] font-mono focus:outline-none focus:border-amber-500 transition-colors"
-                 readonly>
-        </div>
-        <div class="mb-4" id="wifi-password-group">
+            id="wifi-connect-form" class="mt-5 hidden bg-[#1e1e1e] border border-[#2a2a2a] rounded-lg p-5">
+        <p class="font-mono text-[10px] tracking-widest text-[#666666] mb-4">CONNECTING TO</p>
+        <input type="text" name="ssid" id="wifi-ssid-input"
+               class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2 text-sm text-[#e8e8e8] font-mono
+                      focus:outline-none focus:border-amber-500 transition-colors mb-4"
+               readonly>
+        <div id="wifi-password-group" class="mb-5">
           <label class="block font-mono text-[10px] tracking-[0.12em] text-[#666666] mb-1.5">PASSWORD</label>
           <input type="password" name="password" id="wifi-password"
-                 inputmode="none"
-                 data-osk
-                 data-osk-submit="true"
-                 class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2 text-sm text-[#e8e8e8] font-mono placeholder-[#666666] focus:outline-none focus:border-amber-500 transition-colors"
+                 inputmode="none" data-osk data-osk-submit="true"
+                 class="w-full bg-raised border border-[#2a2a2a] rounded px-3 py-2 text-sm text-[#e8e8e8] font-mono
+                        placeholder-[#666666] focus:outline-none focus:border-amber-500 transition-colors"
                  placeholder="Leave blank for open networks">
         </div>
         <div class="flex gap-2">
           <button type="submit"
-                  class="bg-amber-500 hover:bg-amber-400 text-black font-mono text-xs font-bold tracking-widest px-4 py-2 rounded transition-colors">
+                  class="bg-amber-500 hover:bg-amber-400 text-black font-mono text-xs font-bold tracking-widest px-5 py-2.5 rounded transition-colors">
             CONNECT
           </button>
           <button type="button" onclick="cancelConnect()"
-                  class="font-mono text-xs tracking-widest text-[#666666] border border-[#2a2a2a] px-4 py-2 rounded hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors">
+                  class="font-mono text-xs tracking-widest text-[#666666] border border-[#2a2a2a] px-5 py-2.5 rounded
+                         hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors">
             CANCEL
           </button>
         </div>
       </form>
     </div>
-  </div>
 
-  <!-- ── Account ────────────────────────────────────────────────────────── -->
-  <div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden">
-    <div class="px-5 py-3 border-b border-[#2a2a2a]">
-      <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">ACCOUNT</span>
-    </div>
-    <div class="p-5">
-      <div class="flex items-center gap-4 mb-5 pb-5 border-b border-[#2a2a2a]">
-        <div class="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500 flex items-center justify-center flex-shrink-0">
-          <span class="font-mono text-sm font-bold text-amber-500">{{ user.name[0]|upper if user.name else '?' }}</span>
-        </div>
-        <div>
-          <p class="text-sm font-semibold text-[#e8e8e8]">{{ user.name or '—' }}</p>
-          <p class="font-mono text-xs text-[#666666]">{{ user.email or '—' }}</p>
-        </div>
-      </div>
-      <div class="mb-5 pb-5 border-b border-[#2a2a2a]">
-        <p class="font-mono text-[10px] tracking-widest text-[#666666] mb-1">API ENDPOINT</p>
-        <p class="font-mono text-xs text-[#666666]">{{ config.get('API_BASE_URL', '—') }}</p>
-      </div>
-      <form method="POST" action="{{ url_for('logout') }}">
-        <button type="submit"
-                class="w-full font-mono text-xs font-bold tracking-widest text-red-500 border border-red-500/30
-                       py-2.5 rounded hover:bg-red-500/10 transition-colors">
-          SIGN OUT &amp; REVOKE TOKEN
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ── Display ────────────────────────────────────────────────────────── -->
-  <div class="col-span-2 bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden">
-    <div class="px-5 py-3 border-b border-[#2a2a2a]">
-      <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">DISPLAY</span>
-    </div>
-    <div class="p-5">
-      <div class="flex items-center justify-between mb-5">
-        <div>
-          <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">FONT SIZE</p>
-          <p class="text-[#666666] text-xs">Current: <span id="font-size-label">15px</span></p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="adjustFontSize(-1)"
-                  class="w-9 h-9 rounded border border-[#2a2a2a] bg-raised flex items-center justify-center
-                         text-[#e8e8e8] font-mono font-bold hover:border-amber-500/50 hover:text-amber-500 transition-colors"
-                  title="Decrease font size">
-            <span class="text-base leading-none">A−</span>
-          </button>
-          <button onclick="adjustFontSize(0)"
-                  class="h-9 px-3 rounded border border-[#2a2a2a] bg-raised
-                         font-mono text-[10px] tracking-widest text-[#666666] hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors"
-                  title="Reset to default">
-            RESET
-          </button>
-          <button onclick="adjustFontSize(1)"
-                  class="w-9 h-9 rounded border border-[#2a2a2a] bg-raised flex items-center justify-center
-                         text-[#e8e8e8] font-mono font-bold hover:border-amber-500/50 hover:text-amber-500 transition-colors"
-                  title="Increase font size">
-            <span class="text-lg leading-none">A+</span>
-          </button>
-        </div>
+    <!-- ── Account ───────────────────────────────────────────────────────────── -->
+    <div id="section-account" class="settings-section hidden max-w-2xl">
+      <div class="mb-6">
+        <h2 class="font-mono text-sm tracking-widest text-[#e8e8e8]">ACCOUNT</h2>
+        <p class="text-[#666666] text-xs mt-0.5">Signed-in user and API connection</p>
       </div>
 
-      <div class="flex items-center justify-between pt-5 border-t border-[#2a2a2a]">
-        <div>
-          <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">THEME</p>
-          <p class="text-[#666666] text-xs">Light works better in bright rooms</p>
+      <div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden">
+        <!-- User info -->
+        <div class="flex items-center gap-4 p-5 border-b border-[#2a2a2a]">
+          <div class="w-11 h-11 rounded-full bg-amber-500/10 border border-amber-500 flex items-center justify-center flex-shrink-0">
+            <span class="font-mono text-sm font-bold text-amber-500">{{ user.name[0]|upper if user.name else '?' }}</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-[#e8e8e8]">{{ user.name or '—' }}</p>
+            <p class="font-mono text-xs text-[#666666]">{{ user.email or '—' }}</p>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button id="btn-theme-dark" onclick="setTheme('dark')"
-                  class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
-            DARK
-          </button>
-          <button id="btn-theme-light" onclick="setTheme('light')"
-                  class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
-            LIGHT
-          </button>
-        </div>
-      </div>
 
-      <div class="flex items-center justify-between pt-5 border-t border-[#2a2a2a]">
-        <div>
-          <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">ORIENTATION</p>
-          <p class="text-[#666666] text-xs">Rotate the display 90°</p>
+        <!-- API endpoint -->
+        <div class="p-5 border-b border-[#2a2a2a]">
+          <p class="font-mono text-[10px] tracking-widest text-[#666666] mb-1.5">API ENDPOINT</p>
+          <p class="font-mono text-xs text-[#aaaaaa] break-all">{{ config.get('API_BASE_URL', '—') }}</p>
         </div>
-        <div class="flex items-center gap-2">
-          <button id="btn-landscape" onclick="setOrientation('landscape')"
-                  class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
-            LANDSCAPE
-          </button>
-          <button id="btn-portrait" onclick="setOrientation('portrait')"
-                  class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
-            PORTRAIT
-          </button>
+
+        <!-- Sign out -->
+        <div class="p-5">
+          <form method="POST" action="{{ url_for('logout') }}">
+            <button type="submit"
+                    class="w-full font-mono text-xs font-bold tracking-widest text-red-500 border border-red-500/30
+                           py-3 rounded hover:bg-red-500/10 transition-colors">
+              SIGN OUT &amp; REVOKE TOKEN
+            </button>
+          </form>
         </div>
       </div>
     </div>
-  </div>
 
+    <!-- ── Display ───────────────────────────────────────────────────────────── -->
+    <div id="section-display" class="settings-section hidden max-w-2xl">
+      <div class="mb-6">
+        <h2 class="font-mono text-sm tracking-widest text-[#e8e8e8]">DISPLAY</h2>
+        <p class="text-[#666666] text-xs mt-0.5">Appearance and layout preferences</p>
+      </div>
 
+      <div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden divide-y divide-[#2a2a2a]">
+
+        <!-- Font size -->
+        <div class="flex items-center justify-between p-5">
+          <div>
+            <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">FONT SIZE</p>
+            <p class="text-[#666666] text-xs">Current: <span id="font-size-label">24px</span></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="adjustFontSize(-1)"
+                    class="w-9 h-9 rounded border border-[#2a2a2a] bg-raised flex items-center justify-center
+                           text-[#e8e8e8] font-mono font-bold hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+                    title="Decrease font size">
+              <span class="text-base leading-none">A−</span>
+            </button>
+            <button onclick="adjustFontSize(0)"
+                    class="h-9 px-3 rounded border border-[#2a2a2a] bg-raised
+                           font-mono text-[10px] tracking-widest text-[#666666] hover:text-[#e8e8e8] hover:border-[#3a3a3a] transition-colors"
+                    title="Reset to default">
+              RESET
+            </button>
+            <button onclick="adjustFontSize(1)"
+                    class="w-9 h-9 rounded border border-[#2a2a2a] bg-raised flex items-center justify-center
+                           text-[#e8e8e8] font-mono font-bold hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+                    title="Increase font size">
+              <span class="text-lg leading-none">A+</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Theme -->
+        <div class="flex items-center justify-between p-5">
+          <div>
+            <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">THEME</p>
+            <p class="text-[#666666] text-xs">Light works better in bright rooms</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-theme-dark" onclick="setTheme('dark')"
+                    class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
+              DARK
+            </button>
+            <button id="btn-theme-light" onclick="setTheme('light')"
+                    class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
+              LIGHT
+            </button>
+          </div>
+        </div>
+
+        <!-- Orientation -->
+        <div class="flex items-center justify-between p-5">
+          <div>
+            <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">ORIENTATION</p>
+            <p class="text-[#666666] text-xs">Rotate the display 90°</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-landscape" onclick="setOrientation('landscape')"
+                    class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
+              LANDSCAPE
+            </button>
+            <button id="btn-portrait" onclick="setOrientation('portrait')"
+                    class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
+              PORTRAIT
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>{# /content panels #}
 </div>
 {% endblock %}
 
 {% block scripts %}
+<style>
+  .settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.375rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: #666666;
+    text-align: left;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .settings-nav-item:hover {
+    background-color: var(--c-raised);
+    color: #e8e8e8;
+  }
+  .settings-nav-item.active {
+    background-color: var(--c-raised);
+    color: #e8e8e8;
+    border: 1px solid #2a2a2a;
+  }
+</style>
+
 <script>
-const FONT_MIN = 11;
-const FONT_MAX = 32;
-const FONT_DEFAULT = 24;
+// ── Section switching ────────────────────────────────────────────────────────
+
+const SECTIONS = ['wifi', 'account', 'display'];
+
+function showSection(name) {
+  SECTIONS.forEach(s => {
+    document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
+    const nav = document.getElementById('nav-' + s);
+    nav.classList.toggle('active', s === name);
+  });
+}
+
+// ── Font size ────────────────────────────────────────────────────────────────
+
+const FONT_MIN = 11, FONT_MAX = 32, FONT_DEFAULT = 24;
 
 function adjustFontSize(delta) {
   const current = parseInt(localStorage.getItem('fontSize') || FONT_DEFAULT, 10);
@@ -190,11 +283,12 @@ function adjustFontSize(delta) {
   document.getElementById('font-size-label').textContent = next + 'px';
 }
 
-// Set label to current value on load
 (function() {
   const sz = parseInt(localStorage.getItem('fontSize') || FONT_DEFAULT, 10);
   document.getElementById('font-size-label').textContent = sz + 'px';
 })();
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
 
 function setTheme(mode) {
   localStorage.setItem('theme', mode);
@@ -210,10 +304,9 @@ function updateThemeButtons(mode) {
   document.getElementById('btn-theme-dark').classList.toggle('border-amber-500/50', !isLight);
 }
 
-(function() {
-  const t = localStorage.getItem('theme') || 'dark';
-  updateThemeButtons(t);
-})();
+(function() { updateThemeButtons(localStorage.getItem('theme') || 'dark'); })();
+
+// ── Orientation ───────────────────────────────────────────────────────────────
 
 function setOrientation(mode) {
   localStorage.setItem('orientation', mode);
@@ -223,18 +316,15 @@ function setOrientation(mode) {
 
 function updateOrientationButtons(mode) {
   const isPortrait = mode === 'portrait';
-  const btnL = document.getElementById('btn-landscape');
-  const btnP = document.getElementById('btn-portrait');
-  btnL.classList.toggle('text-amber-500', !isPortrait);
-  btnL.classList.toggle('border-amber-500/50', !isPortrait);
-  btnP.classList.toggle('text-amber-500', isPortrait);
-  btnP.classList.toggle('border-amber-500/50', isPortrait);
+  document.getElementById('btn-landscape').classList.toggle('text-amber-500', !isPortrait);
+  document.getElementById('btn-landscape').classList.toggle('border-amber-500/50', !isPortrait);
+  document.getElementById('btn-portrait').classList.toggle('text-amber-500', isPortrait);
+  document.getElementById('btn-portrait').classList.toggle('border-amber-500/50', isPortrait);
 }
 
-(function() {
-  const o = localStorage.getItem('orientation') || 'landscape';
-  updateOrientationButtons(o);
-})();
+(function() { updateOrientationButtons(localStorage.getItem('orientation') || 'landscape'); })();
+
+// ── WiFi scan ─────────────────────────────────────────────────────────────────
 
 async function scanWifi() {
   const btn     = document.getElementById('scan-btn');
@@ -252,22 +342,20 @@ async function scanWifi() {
     const text = await res.text();
     if (!res.ok || text.trimStart().startsWith('<')) {
       loading.style.display = 'none';
-      list.innerHTML = `<p class="dim mono">Scan failed: HTTP ${res.status}</p>`;
+      list.innerHTML = `<p class="font-mono text-xs text-[#666666] py-2">Scan failed: HTTP ${res.status}</p>`;
       return;
     }
     const nets = JSON.parse(text);
     loading.style.display = 'none';
 
     if (!nets.length) {
-      list.innerHTML = `<p class="dim mono">No networks found.</p>`;
+      list.innerHTML = `<p class="font-mono text-xs text-[#666666] py-2">No networks found.</p>`;
       return;
     }
 
     list.innerHTML = nets.map(n => `
       <div class="wifi-row ${n.in_use ? 'in-use' : ''}" onclick="selectNetwork('${n.ssid.replace(/'/g,"\\'")}', '${n.security}')">
-        <div class="wifi-signal" title="${n.signal}%">
-          ${signalBars(n.bars)}
-        </div>
+        <div class="wifi-signal" title="${n.signal}%">${signalBars(n.bars)}</div>
         <div class="wifi-info">
           <span class="wifi-ssid">${n.ssid}</span>
           <span class="wifi-sec mono dim">${n.security}${n.in_use ? ' · CONNECTED' : ''}</span>
@@ -278,7 +366,7 @@ async function scanWifi() {
 
   } catch(e) {
     loading.style.display = 'none';
-    list.innerHTML = `<p class="dim mono">Scan failed: ${e.message}</p>`;
+    list.innerHTML = `<p class="font-mono text-xs text-[#666666] py-2">Scan failed: ${e.message}</p>`;
   } finally {
     btn.disabled    = false;
     btn.textContent = 'SCAN';
@@ -297,9 +385,7 @@ function selectNetwork(ssid, security) {
   const pwGroup = document.getElementById('wifi-password-group');
   pwGroup.style.display = security !== 'Open' ? 'block' : 'none';
   form.style.display    = 'block';
-  if (security !== 'Open') {
-    document.getElementById('wifi-password').focus();
-  }
+  if (security !== 'Open') document.getElementById('wifi-password').focus();
 }
 
 function cancelConnect() {
