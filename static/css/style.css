@@ -97,6 +97,28 @@ html.theme-light ::-webkit-scrollbar-thumb:hover { background: #C4BDB4; }
   animation: slideIn 0.25s ease;
 }
 
+/* ── Screensaver ────────────────────────────────────── */
+.ss-photo-layer {
+  position: absolute;
+  inset: 0;
+  background-size: contain;        /* never crop — full photo always visible */
+  background-position: center center;
+  background-repeat: no-repeat;
+  transition: opacity 3s ease-in-out;
+}
+
+.ss-caption {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%);
+  color: rgba(255,255,255,0.75);
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+  font-size: 1.1rem;
+  text-align: center;
+  pointer-events: none;
+}
+
 /* ── Portrait mode ──────────────────────────────────── */
 html.portrait-mode body {
   transform: rotate(90deg);

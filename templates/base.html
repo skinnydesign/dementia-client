@@ -180,6 +180,22 @@
     </div>
   </div>
 
+  <!-- Photo Screensaver — z-9985 (below alarm 9999, carer modal 9998, alert 9990) -->
+  <div id="screensaver-overlay"
+       style="display:none; position:fixed; inset:0; z-index:9985;
+              background:#000; opacity:0; pointer-events:none;"
+       aria-hidden="true">
+    <div id="ss-layer-a" class="ss-photo-layer" style="opacity:1;"></div>
+    <div id="ss-layer-b" class="ss-photo-layer" style="opacity:0;"></div>
+    <div id="ss-caption" class="ss-caption" style="display:none;"></div>
+    <div id="ss-hint"
+         style="position:absolute; top:1.5rem; left:50%; transform:translateX(-50%);
+                color:rgba(255,255,255,0.4); font-family:'Atkinson Hyperlegible',sans-serif;
+                font-size:0.9rem; pointer-events:none; transition:opacity 3s ease-in-out;">
+      Tap anywhere to return
+    </div>
+  </div>
+
   <!-- Settings cog / back button — bottom-right corner -->
   {% if request.endpoint == 'settings' %}
   <a href="{{ url_for('dashboard') }}"
@@ -491,6 +507,190 @@
   initCarerButton();
   setInterval(checkAlert,    60000);
   setInterval(checkSchedule, 60000);
+
+})();
+</script>
+
+<script>
+// ── Photo Screensaver ────────────────────────────────────────────────────────
+(function () {
+
+  // ── Config from localStorage ───────────────────────────────────────────────
+  function ssEnabled()    { return localStorage.getItem('ssEnabled')      !== 'false'; }
+  function ssIdleMs()     { return parseInt(localStorage.getItem('ssIdleMs')    || '300000', 10); }
+  function ssSlideDurMs() { return parseInt(localStorage.getItem('ssSlideDurMs') || '30000',  10); }
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  var overlay    = document.getElementById('screensaver-overlay');
+  var layerA     = document.getElementById('ss-layer-a');
+  var layerB     = document.getElementById('ss-layer-b');
+  var hint       = document.getElementById('ss-hint');
+  var caption    = document.getElementById('ss-caption');
+
+  var photos     = [];
+  var photoIndex = 0;
+  var frontLayer = layerA;
+  var backLayer  = layerB;
+  var idleTimer  = null;
+  var slideTimer = null;
+  var active     = false;
+
+  // ── Suppression: don't activate while alarm or alert is showing ────────────
+  function isSuppressed() {
+    var alarm = document.getElementById('schedule-alarm');
+    var alert = document.getElementById('alert-popup');
+    if (alarm && !alarm.classList.contains('hidden')) return true;
+    if (alert && !alert.classList.contains('hidden')) return true;
+    return false;
+  }
+
+  // ── Photo list ─────────────────────────────────────────────────────────────
+  async function loadPhotos() {
+    try {
+      var res  = await fetch('/api/screensaver/photos');
+      var data = await res.json();
+      if (data.ok && data.photos && data.photos.length) {
+        // Shuffle so order varies between sessions
+        var arr = data.photos.slice();
+        for (var i = arr.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+        }
+        photos = arr;
+      } else {
+        photos = [];
+      }
+    } catch (e) {}
+  }
+
+  // Preload into browser cache before crossfade to prevent blank flash
+  function preloadImage(url) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload  = function () { resolve(url); };
+      img.onerror = function () { resolve(null); };
+      img.src = url;
+    });
+  }
+
+  // ── Show screensaver ───────────────────────────────────────────────────────
+  async function showScreensaver() {
+    if (active || isSuppressed() || !ssEnabled()) return;
+    if (!photos.length) {
+      await loadPhotos();
+      if (!photos.length) return;  // no photos — stay dark
+    }
+
+    active = true;
+
+    // Load first photo before fading overlay in
+    var firstUrl = photos[photoIndex % photos.length];
+    photoIndex++;
+    await preloadImage(firstUrl);
+    frontLayer.style.backgroundImage = 'url("' + firstUrl + '")';
+    frontLayer.style.opacity = '1';
+    backLayer.style.opacity  = '0';
+
+    // Fade overlay in
+    overlay.style.display    = 'block';
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        overlay.style.transition    = 'opacity 2s ease-in-out';
+        overlay.style.opacity       = '1';
+        overlay.style.pointerEvents = 'auto';
+      });
+    });
+
+    // Fade hint out after 4s
+    setTimeout(function () { if (hint) hint.style.opacity = '0'; }, 4000);
+
+    // Start slideshow
+    scheduleNextSlide();
+  }
+
+  function scheduleNextSlide() {
+    slideTimer = setTimeout(async function () {
+      if (!active) return;
+      await advanceSlide();
+      scheduleNextSlide();
+    }, ssSlideDurMs());
+  }
+
+  async function advanceSlide() {
+    if (!photos.length) return;
+    var nextUrl = photos[photoIndex % photos.length];
+    photoIndex++;
+
+    await preloadImage(nextUrl);
+
+    // Set next photo on the currently invisible back layer
+    backLayer.style.backgroundImage = 'url("' + nextUrl + '")';
+
+    // Crossfade
+    frontLayer.style.opacity = '0';
+    backLayer.style.opacity  = '1';
+
+    // Swap layer references
+    var tmp = frontLayer;
+    frontLayer = backLayer;
+    backLayer  = tmp;
+
+    // Update caption: filename without path/extension, hyphens → spaces
+    var name = nextUrl.split('/').pop().replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+    if (caption) {
+      caption.textContent   = name;
+      caption.style.display = name ? 'block' : 'none';
+    }
+  }
+
+  // ── Hide screensaver ───────────────────────────────────────────────────────
+  function hideScreensaver() {
+    if (!active) return;
+    active = false;
+
+    clearTimeout(slideTimer);
+    slideTimer = null;
+
+    overlay.style.transition    = 'opacity 1.5s ease-in-out';
+    overlay.style.opacity       = '0';
+    overlay.style.pointerEvents = 'none';
+
+    // Reset hint for next time
+    if (hint) hint.style.opacity = '1';
+
+    setTimeout(function () { overlay.style.display = 'none'; }, 1600);
+  }
+
+  // ── Idle detection ─────────────────────────────────────────────────────────
+  function resetIdleTimer() {
+    if (active) hideScreensaver();
+    clearTimeout(idleTimer);
+    if (ssEnabled()) {
+      idleTimer = setTimeout(showScreensaver, ssIdleMs());
+    }
+  }
+
+  ['mousemove', 'mousedown', 'touchstart', 'keydown', 'pointerdown'].forEach(function (evt) {
+    document.addEventListener(evt, resetIdleTimer, { passive: true });
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  loadPhotos();
+  setInterval(loadPhotos, 300000);  // Refresh photo list every 5 min
+
+  if (ssEnabled()) {
+    idleTimer = setTimeout(showScreensaver, ssIdleMs());
+  }
+
+  // Exposed so settings page can apply new values without a page reload
+  window.ssRestart = function () {
+    clearTimeout(idleTimer);
+    clearTimeout(slideTimer);
+    if (active) hideScreensaver();
+    if (ssEnabled()) {
+      idleTimer = setTimeout(showScreensaver, ssIdleMs());
+    }
+  };
 
 })();
 </script>

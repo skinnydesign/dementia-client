@@ -13,7 +13,7 @@ from datetime import datetime
 
 import requests
 from flask import (Flask, flash, jsonify, redirect, render_template,
-                   request, session, url_for)
+                   request, send_from_directory, session, url_for)
 from functools import wraps
 
 import db
@@ -37,6 +37,11 @@ app.secret_key = os.environ.get("SECRET_KEY", "change-me-in-production-please")
 CONFIG_FILE = os.path.join(
     os.environ.get("DATA_DIR", os.path.expanduser("~")), ".flask_todo_config.json"
 )
+
+PHOTOS_DIR = os.path.join(
+    os.environ.get("DATA_DIR", os.path.expanduser("~")), "photos"
+)
+PHOTO_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
 
 # ─────────────────────────────────────────────────────────────
 #  STARTUP
@@ -745,6 +750,63 @@ def api_alert_delete():
         pass
     db.set_alert(None, None)
     return jsonify({"ok": True})
+
+
+@app.route("/api/screensaver/photos")
+@login_required
+def api_screensaver_photos():
+    if not os.path.isdir(PHOTOS_DIR):
+        return jsonify({"ok": True, "photos": []})
+    photos = [
+        f"/photos/{fname}"
+        for fname in sorted(os.listdir(PHOTOS_DIR))
+        if os.path.splitext(fname)[1].lower() in PHOTO_EXTENSIONS
+    ]
+    return jsonify({"ok": True, "photos": photos})
+
+
+@app.route("/api/screensaver/photos/upload", methods=["POST"])
+@login_required
+def api_screensaver_upload():
+    os.makedirs(PHOTOS_DIR, exist_ok=True)
+    files = request.files.getlist("photos")
+    if not files:
+        return jsonify({"ok": False, "error": "No files received"}), 400
+    saved = []
+    for f in files:
+        ext = os.path.splitext(f.filename)[1].lower() if f.filename else ""
+        if ext not in PHOTO_EXTENSIONS:
+            continue
+        # Sanitise filename: keep only safe characters
+        safe_name = re.sub(r"[^\w\-.]", "_", os.path.basename(f.filename))
+        dest = os.path.join(PHOTOS_DIR, safe_name)
+        # Avoid clobbering existing files by appending a counter
+        base, dot_ext = os.path.splitext(safe_name)
+        counter = 1
+        while os.path.exists(dest):
+            dest = os.path.join(PHOTOS_DIR, f"{base}_{counter}{dot_ext}")
+            counter += 1
+        f.save(dest)
+        saved.append(os.path.basename(dest))
+    return jsonify({"ok": True, "saved": saved})
+
+
+@app.route("/api/screensaver/photos/<path:filename>", methods=["DELETE"])
+@login_required
+def api_screensaver_delete(filename):
+    # Prevent path traversal — basename only
+    safe = os.path.basename(filename)
+    target = os.path.join(PHOTOS_DIR, safe)
+    if not os.path.isfile(target):
+        return jsonify({"ok": False, "error": "Not found"}), 404
+    os.remove(target)
+    return jsonify({"ok": True})
+
+
+@app.route("/photos/<path:filename>")
+@login_required
+def serve_photo(filename):
+    return send_from_directory(PHOTOS_DIR, filename)
 
 
 @app.route("/api/ical")
