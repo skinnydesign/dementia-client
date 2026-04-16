@@ -115,7 +115,8 @@ Key functions:
 | `GET /api/ical` | required | Serve iCal events from SQLite |
 | `POST /api/sync` | required | Force immediate sync |
 | `GET /api/wifi/scan` | public | Scan WiFi networks (Pi only, fails gracefully in Docker) |
-| `POST /api/wifi/connect` | public | Connect to WiFi (Pi only) |
+| `POST /api/wifi/connect` | public | Connect to WiFi — **blocking**, returns only when fully connected or failed |
+| `GET /api/wifi/verify` | public | Check if the configured API URL is reachable (used post-connect) |
 | `GET /api/carer/status` | required | Returns active carer visit or null |
 | `POST /api/carer/arrive` | required | Record carer arrival (name required) |
 | `POST /api/carer/leave` | required | Record carer departure |
@@ -195,13 +196,17 @@ Tests run against the host Python (3.9+). The `from __future__ import annotation
 - **Kiosk autostart (Bullseye/LXDE)**: writes `/etc/xdg/lxsession/LXDE-pi/autostart`
 - Disables screen blanking via `consoleblank=0` in `/boot/firmware/cmdline.txt`
 - WiFi is configured through the in-app `/wifi-setup` page — do not use FullPageOS or other kiosk OSes as they require WiFi to be pre-configured before deployment
+- Sudoers entry at `/etc/sudoers.d/dementia-wifi` grants passwordless `wpa_cli`, `iwgetid`, and `nmcli` to the install user
 
 ## Known Quirks
 - Laravel todo resource is named `apiTodos` (not `todos`) — all API calls use this path
 - Todo field is `todo` (not `title`), completion is `completed` boolean
 - `GET /api/apiTodos` returns paginated — actual items are at `data.data`
 - Delete is removed from the UI — todos can only be marked complete
-- WiFi scan/connect uses `wpa_cli`/`iwgetid` (not `nmcli`) — won't work inside Docker (graceful failure)
+- WiFi scan/connect uses **`nmcli`** on Raspberry Pi OS Bookworm (NetworkManager) and falls back to `wpa_cli`/`iwgetid` on older installs — detected at runtime via `systemctl is-active NetworkManager`; won't work inside Docker (graceful failure)
+- `nmcli` is called via `sudo` because gunicorn runs as a service (not a console session) and PolicyKit would otherwise block NetworkManager access; `wpa_cli` likewise requires `sudo`
+- `POST /api/wifi/connect` is a **blocking** endpoint — it waits up to 30 s for the full connection (WPA handshake + DHCP + IP assignment) before returning, so the frontend knows the Pi is genuinely online before showing "Connected"
+- Wrong password detection: nmcli path parses the error output; wpa_cli path polls `list_networks` for the `TEMP-DISABLED` flag
 - Multiple gunicorn workers each run their own sync thread — WAL mode handles concurrent SQLite writes
 - DB filename is `control.db` (not `app.sqlite` as earlier versions used)
 - `app/templates/` and `app/static/` on the host are empty Docker mount-point directories — tests override `template_folder` and `static_folder` to point at the real root-level directories

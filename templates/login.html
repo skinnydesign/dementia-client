@@ -22,8 +22,8 @@
       <!-- Header -->
       <div class="text-center mb-8">
         <div class="text-amber-500 text-4xl leading-none mb-4">⬡</div>
-        <h1 class="font-mono text-sm font-bold tracking-[0.2em] text-[#e8e8e8] mb-2">CONTROL PANEL</h1>
-        <p class="text-[#666666] text-sm">Sign in to access your workspace</p>
+        <h1 class="font-sans text-xl font-bold text-[#e8e8e8] mb-2">Welcome</h1>
+        <p class="text-[#666666] text-sm">Please sign in to continue</p>
       </div>
 
       {% if error %}
@@ -80,7 +80,8 @@
 
       <div class="mt-5 pt-5 border-t border-[#2a2a2a] text-center">
         <a href="{{ url_for('wifi_setup') }}"
-           class="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-[#666666] hover:text-[#e8e8e8] transition-colors">
+           class="flex items-center justify-center gap-2 w-full bg-amber-300 hover:bg-amber-200 text-black
+                       font-mono text-xs font-bold tracking-[0.12em] py-3 rounded transition-colors duration-150 mt-1">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
             <path d="M1.42 9a16 16 0 0 1 21.16 0"/>

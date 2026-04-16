@@ -736,6 +736,17 @@ def api_alert():
     return jsonify({"ok": True, "alert": alert})
 
 
+@app.route("/api/alert", methods=["DELETE"])
+@login_required
+def api_alert_delete():
+    try:
+        requests.delete(api_url("alert"), headers=api_headers(), timeout=10)
+    except Exception:
+        pass
+    db.set_alert(None, None)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/ical")
 @login_required
 def api_ical():

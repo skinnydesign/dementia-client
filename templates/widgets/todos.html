@@ -1,8 +1,8 @@
 <div class="bg-panel border border-[#2a2a2a] rounded-lg overflow-hidden h-full flex flex-col">
   <div class="flex items-center px-4 py-3 border-b border-[#2a2a2a] flex-shrink-0">
-    <span class="font-mono text-xs tracking-widest text-[#e8e8e8]">TODOS</span>
+    <span id="todo-header-count" class="font-sans text-sm font-bold text-[#e8e8e8]">Things to do</span>
   </div>
-  <div id="todo-list" class="p-4 flex-1 overflow-y-auto">
+  <div id="todo-list" class="p-4 overflow-y-auto max-h-[320px]">
     <p class="font-sans text-sm text-[#aaaaaa]">Loading…</p>
   </div>
 </div>
@@ -14,12 +14,14 @@
     const list = document.getElementById('todo-list');
     if (!data.ok) { list.innerHTML = `<p class="font-sans text-sm text-[#aaaaaa]">Error: ${data.message}</p>`; return; }
     const pending = data.todos.filter(t => !t.completed);
-    if (!pending.length) { list.innerHTML = `<p class="font-sans text-sm text-[#aaaaaa]">No pending todos.</p>`; return; }
+    const countEl = document.getElementById('todo-header-count');
+    if (countEl) countEl.textContent = pending.length ? `Things to do (${pending.length})` : 'Things to do';
+    if (!pending.length) { list.innerHTML = `<p class="font-sans text-sm text-[#aaaaaa]">Nothing to do right now.</p>`; return; }
     list.innerHTML = pending.map(t => `
       <div class="flex items-center gap-3 py-3 border-b border-[#333333] last:border-0 cursor-pointer hover:bg-raised rounded transition-colors"
            id="todo-${t.id}" onclick="widgetCompleteTodo(${t.id})">
-        <input type="checkbox" class="accent-amber-500 w-6 h-6 flex-shrink-0 pointer-events-none">
-        <span class="font-sans text-base font-semibold text-[#E8E6E3] flex-1">${t.todo}</span>
+        <input type="checkbox" class="accent-amber-500 w-8 h-8 flex-shrink-0 pointer-events-none">
+        <span class="font-sans text-lg font-semibold text-[#E8E6E3] flex-1">${t.todo}</span>
       </div>
     `).join('');
   }
@@ -32,5 +34,6 @@
   };
 
   document.addEventListener('DOMContentLoaded', load);
+  setInterval(load, 60000);
 })();
 </script>

@@ -138,6 +138,23 @@
 
       <div class="flex items-center justify-between pt-5 border-t border-[#2a2a2a]">
         <div>
+          <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">THEME</p>
+          <p class="text-[#666666] text-xs">Light works better in bright rooms</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-theme-dark" onclick="setTheme('dark')"
+                  class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
+            DARK
+          </button>
+          <button id="btn-theme-light" onclick="setTheme('light')"
+                  class="h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest transition-colors">
+            LIGHT
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-5 border-t border-[#2a2a2a]">
+        <div>
           <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">ORIENTATION</p>
           <p class="text-[#666666] text-xs">Rotate the display 90°</p>
         </div>
@@ -162,8 +179,8 @@
 {% block scripts %}
 <script>
 const FONT_MIN = 11;
-const FONT_MAX = 24;
-const FONT_DEFAULT = 20;
+const FONT_MAX = 32;
+const FONT_DEFAULT = 24;
 
 function adjustFontSize(delta) {
   const current = parseInt(localStorage.getItem('fontSize') || FONT_DEFAULT, 10);
@@ -177,6 +194,25 @@ function adjustFontSize(delta) {
 (function() {
   const sz = parseInt(localStorage.getItem('fontSize') || FONT_DEFAULT, 10);
   document.getElementById('font-size-label').textContent = sz + 'px';
+})();
+
+function setTheme(mode) {
+  localStorage.setItem('theme', mode);
+  document.documentElement.classList.toggle('theme-light', mode === 'light');
+  updateThemeButtons(mode);
+}
+
+function updateThemeButtons(mode) {
+  const isLight = mode === 'light';
+  document.getElementById('btn-theme-light').classList.toggle('text-amber-500', isLight);
+  document.getElementById('btn-theme-light').classList.toggle('border-amber-500/50', isLight);
+  document.getElementById('btn-theme-dark').classList.toggle('text-amber-500', !isLight);
+  document.getElementById('btn-theme-dark').classList.toggle('border-amber-500/50', !isLight);
+}
+
+(function() {
+  const t = localStorage.getItem('theme') || 'dark';
+  updateThemeButtons(t);
 })();
 
 function setOrientation(mode) {

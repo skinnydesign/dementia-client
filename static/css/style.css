@@ -1,16 +1,61 @@
 /* ═══════════════════════════════════════════════════════
-   CONTROL — animations & scrollbar only
+   CONTROL — animations, theme variables & scrollbar
    Layout and components are handled by Tailwind CSS
    ═══════════════════════════════════════════════════════ */
 
 /* ── Base ───────────────────────────────────────────── */
 html { height: 100%; }
 
+/* ── Theme variables ────────────────────────────────── */
+/* Named Tailwind colours (surface, panel, raised …) reference
+   these variables so a single class toggle switches the theme. */
+:root {
+  /* Dark theme (default) */
+  --c-surface:    #161616;
+  --c-panel:      #1e1e1e;
+  --c-raised:     #252525;
+  --c-hovered:    #2e2e2e;
+  --c-lit:        #3a3a3a;
+  --c-border:     #2a2a2a;
+  --c-border-lit: #3a3a3a;
+}
+
+html.theme-light {
+  --c-surface:    #F5F0E8;
+  --c-panel:      #FFFFFF;
+  --c-raised:     #EDE8DF;
+  --c-hovered:    #E5E0D7;
+  --c-lit:        #D6D0C8;
+  --c-border:     #D4CFC7;
+  --c-border-lit: #C4BDB4;
+}
+
+/* ── Contrast fix (dark theme) ──────────────────────── */
+/* #666666 on #161616 is ~3:1 — fails WCAG AA.
+   Bump to #999999 (~5.9:1) throughout. */
+.text-\[\#666666\] { color: #999999; }
+
+/* ── Light theme: text & border colour overrides ────── */
+/* Arbitrary-value Tailwind classes used throughout the
+   templates need explicit overrides for the light theme. */
+html.theme-light .text-\[\#E8E6E3\],
+html.theme-light .text-\[\#e8e8e8\]   { color: #1C1917; }
+html.theme-light .text-\[\#aaaaaa\]    { color: #57534E; }
+html.theme-light .text-\[\#666666\]    { color: #6B7280; }
+html.theme-light .text-\[\#444444\]    { color: #9CA3AF; }
+html.theme-light .border-\[\#2a2a2a\]  { border-color: #D4CFC7; }
+html.theme-light .border-\[\#3a3a3a\]  { border-color: #C4BDB4; }
+html.theme-light .border-\[\#333333\]  { border-color: #D4CFC7; }
+html.theme-light body                  { color: #1C1917; }
+
 /* ── Scrollbar ──────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar       { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+html.theme-light ::-webkit-scrollbar-thumb       { background: #D4CFC7; }
+html.theme-light ::-webkit-scrollbar-thumb:hover { background: #C4BDB4; }
 
 /* ── Keyframes ──────────────────────────────────────── */
 @keyframes pulse {
@@ -28,23 +73,16 @@ html { height: 100%; }
   to   { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes alarmFlash {
-  0%, 100% { background-color: #d97706; }
-  50%       { background-color: #b45309; }
-}
+/* alarmFlash removed — alarm overlay uses a solid bg-amber-500 instead.
+   Flashing backgrounds can cause distress for dementia patients. */
 
 @keyframes alarmPulseIcon {
+  /* Gentle pulse — softened from 1.15 to 1.05 to avoid anxiety */
   0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.15); }
+  50%       { transform: scale(1.05); }
 }
 
-@keyframes alarmShake {
-  0%, 100% { transform: translateX(0); }
-  20%       { transform: translateX(-6px); }
-  40%       { transform: translateX(6px); }
-  60%       { transform: translateX(-4px); }
-  80%       { transform: translateX(4px); }
-}
+/* alarmShake removed — shaking buttons feel aggressive for this audience. */
 
 /* ── Animation utility classes ──────────────────────── */
 .animate-pulse-dot {
