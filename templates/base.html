@@ -138,7 +138,8 @@
     {% block content %}{% endblock %}
   </div>
 
-  <!-- Carer button — bottom-left corner -->
+  <!-- Carer button — bottom-left corner (hidden on settings page) -->
+  {% if request.endpoint != 'settings' %}
   <button id="carer-btn" onclick="carerButtonClick()"
      class="fixed bottom-5 left-5 z-50 h-10 px-4 rounded-full border flex items-center gap-2
             font-mono text-xs font-bold tracking-widest transition-all duration-200 shadow-lg hidden"
@@ -146,6 +147,7 @@
     <span id="carer-btn-icon"></span>
     <span id="carer-btn-label"></span>
   </button>
+  {% endif %}
 
   <!-- Carer check-in modal -->
   <div id="carer-modal" class="hidden fixed inset-0 z-[9998] flex items-center justify-center bg-black/60">
@@ -379,6 +381,7 @@
   let activeVisit = null;
 
   async function initCarerButton() {
+    if (!document.getElementById('carer-btn')) return;
     try {
       const res  = await fetch('/api/carer/status');
       const data = await res.json();

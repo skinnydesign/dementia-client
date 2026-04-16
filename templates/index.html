@@ -243,7 +243,7 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.7rem;
     letter-spacing: 0.05em;
-    color: #666666;
+    color: #999999;
     text-align: left;
     transition: background-color 0.15s, color 0.15s;
   }
@@ -254,8 +254,11 @@
   .settings-nav-item.active {
     background-color: var(--c-raised);
     color: #e8e8e8;
-    border: 1px solid #2a2a2a;
+    border: 1px solid var(--c-border);
   }
+  html.theme-light .settings-nav-item { color: #6B7280; }
+  html.theme-light .settings-nav-item:hover { color: #1C1917; }
+  html.theme-light .settings-nav-item.active { color: #1C1917; }
 </style>
 
 <script>
