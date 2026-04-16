@@ -19,7 +19,7 @@ templates/
   login.html    — unauthenticated login page (has WiFi setup link)
   wifi_setup.html — public WiFi scan/connect page
   dashboard.html — main kiosk display (todos, schedule, iCal panels)
-  index.html    — settings page (WiFi, account, display)
+  index.html    — settings page (WiFi, account, display, screensaver)
   widgets/
     todos.html    — incomplete todos widget (full-row tap to complete)
     schedule.html — due schedule items widget
@@ -27,7 +27,7 @@ templates/
     clock.html    — clock/date widget
 static/
   css/
-    style.css   — custom animations (alarmFlash, alarmPulseIcon, alarmShake)
+    style.css   — custom animations (alarmPulseIcon) and screensaver layer styles
     fonts.css   — @font-face declarations for Atkinson Hyperlegible, DM Sans, JetBrains Mono
   fonts/        — self-hosted font files (Atkinson Hyperlegible, DM Sans, JetBrains Mono)
 tests/
@@ -35,7 +35,7 @@ tests/
   test_db.py    — unit tests for all db.py functions
   test_routes.py — Flask route tests (auth, API endpoints, page rendering)
   test_sync.py  — sync pull/push logic tests (all HTTP calls mocked)
-data/           — persistent SQLite DB (git-ignored, survives container restarts)
+data/           — persistent SQLite DB + photos/ subdirectory (git-ignored, survives container restarts)
 ```
 
 **Deleted legacy files** (no longer present): root-level `app.py`, `auth.py`, `client.py`, `manager.py`, `registry.py`, `run.py`, `settings.py`, `todos.py`, `requirements 2.txt`, `app/__init__.py`
@@ -120,6 +120,10 @@ Key functions:
 | `GET /api/carer/status` | required | Returns active carer visit or null |
 | `POST /api/carer/arrive` | required | Record carer arrival (name required) |
 | `POST /api/carer/leave` | required | Record carer departure |
+| `GET /api/screensaver/photos` | required | List photo URLs from `DATA_DIR/photos/` |
+| `POST /api/screensaver/photos/upload` | required | Upload one or more photos (multipart) |
+| `DELETE /api/screensaver/photos/<filename>` | required | Delete a photo by filename |
+| `GET /photos/<filename>` | required | Serve a photo file from `DATA_DIR/photos/` |
 
 ## Laravel API Endpoints Used
 | Purpose | Laravel route | Notes |
@@ -158,6 +162,18 @@ The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly
 - Timezone-aware datetimes converted to local time before storage
 - Timed events show time (e.g. "27 Mar 14:30"); all-day events show date only
 
+## Photo Screensaver
+- Activates after a configurable idle period (default 5 min) with no user interaction
+- Full-screen black overlay (`z-9985`, below alarm/alert/carer modal) with a two-layer crossfading slideshow
+- Photos served from `DATA_DIR/photos/` (`~/photos/` on Pi, `/data/photos/` in Docker)
+- Supported formats: JPG, PNG, GIF, WEBP, AVIF — controlled by `PHOTO_EXTENSIONS` in `app.py`
+- `background-size: contain` used so photos are never cropped (important for recognising faces)
+- Any touch/click/keypress dismisses the screensaver and resets the idle timer
+- Suppressed if the schedule alarm or alert popup is visible
+- Photo list re-fetched every 5 min so newly uploaded photos appear without a page reload
+- Settings stored in `localStorage`: `ssEnabled`, `ssIdleMs`, `ssSlideDurMs`
+- **Settings → Screensaver** panel: ON/OFF toggle, idle timeout selector, slide duration selector, upload drop zone, photo thumbnail grid with per-photo delete, and the local network URL (`url_for('settings', _external=True)`) for family to open on their phone
+
 ## Carer Visit System
 - Carer presses a button (fixed bottom-left in `base.html`) to check in/out
 - Check-in shows a modal to enter their name; check-out confirms departure
@@ -174,7 +190,7 @@ The UI is designed for users with dementia and age-related sight impairment:
 - **Settings page**: bottom-right button shows a back arrow (→ `/dashboard`) when on settings, gear icon on all other pages
 
 ## Testing
-Run the full test suite (91 tests, ~0.7s) from the project root:
+Run the full test suite (92 tests, ~0.7s) from the project root:
 ```bash
 python3 -m pytest
 ```

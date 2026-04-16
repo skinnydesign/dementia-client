@@ -234,6 +234,40 @@
           </div>
         </div>
 
+        <!-- Alarm sound -->
+        <div class="p-5">
+          <div class="mb-3">
+            <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">ALARM SOUND</p>
+            <p class="text-[#666666] text-xs">Played when a schedule reminder is due — tap to preview</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="btn-sound-chime"     onclick="setAlarmSound('chime')"
+                    class="alarm-sound-btn h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest text-[#e8e8e8] transition-colors">
+              CHIME
+            </button>
+            <button id="btn-sound-doorbell"  onclick="setAlarmSound('doorbell')"
+                    class="alarm-sound-btn h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest text-[#e8e8e8] transition-colors">
+              DOORBELL
+            </button>
+            <button id="btn-sound-telephone" onclick="setAlarmSound('telephone')"
+                    class="alarm-sound-btn h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest text-[#e8e8e8] transition-colors">
+              TELEPHONE
+            </button>
+            <button id="btn-sound-cuckoo"    onclick="setAlarmSound('cuckoo')"
+                    class="alarm-sound-btn h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest text-[#e8e8e8] transition-colors">
+              CUCKOO
+            </button>
+            <button id="btn-sound-beep"      onclick="setAlarmSound('beep')"
+                    class="alarm-sound-btn h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest text-[#e8e8e8] transition-colors">
+              BEEP
+            </button>
+            <button id="btn-sound-silent"    onclick="setAlarmSound('silent')"
+                    class="alarm-sound-btn h-9 px-4 rounded border border-[#2a2a2a] bg-raised font-mono text-[10px] tracking-widest text-[#e8e8e8] transition-colors">
+              SILENT
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -301,7 +335,13 @@
         <div class="p-5">
           <p class="font-mono text-xs text-[#e8e8e8] mb-0.5">OPEN ON PHONE OR LAPTOP</p>
           <p class="text-[#666666] text-xs mb-3">On the same WiFi — type this into any browser</p>
-          <p class="font-mono text-sm text-amber-500 break-all">{{ url_for('settings', _external=True) }}</p>
+          <p class="font-mono text-sm text-amber-500 break-all">
+            {%- if local_ip -%}
+              http://{{ local_ip }}:8000/settings
+            {%- else -%}
+              {{ url_for('settings', _external=True) }}
+            {%- endif -%}
+          </p>
         </div>
 
         <!-- Photo upload -->
@@ -437,6 +477,26 @@ function updateOrientationButtons(mode) {
 }
 
 (function() { updateOrientationButtons(localStorage.getItem('orientation') || 'landscape'); })();
+
+// ── Alarm sound ───────────────────────────────────────────────────────────────
+
+function setAlarmSound(sound) {
+  localStorage.setItem('alarmSound', sound);
+  updateAlarmSoundButtons(sound);
+  previewAlarmSound(sound); // from alarm-sounds.js (loaded via base.html)
+}
+
+function updateAlarmSoundButtons(sound) {
+  document.querySelectorAll('.alarm-sound-btn').forEach(btn => {
+    const active = btn.id === 'btn-sound-' + sound;
+    btn.classList.toggle('bg-amber-500/15',      active);
+    btn.classList.toggle('border-amber-500',     active);
+    btn.classList.toggle('text-amber-400',       active);
+    btn.classList.toggle('border-[#2a2a2a]',     !active);
+  });
+}
+
+(function() { updateAlarmSoundButtons(localStorage.getItem('alarmSound') || 'chime'); })();
 
 // ── WiFi scan ─────────────────────────────────────────────────────────────────
 

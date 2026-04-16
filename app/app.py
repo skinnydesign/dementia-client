@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import re
+import socket
 import subprocess
 import time
 from datetime import datetime
@@ -504,9 +505,13 @@ def settings():
         {"slug": "todos", "label": "Todos", "description": "Manage your todo items",
          "icon": "check-square"},
     ]
+    try:
+        local_ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        local_ip = None
     return render_template("index.html", config=cfg, current_wifi=None,
                            available_modules=available, config_enabled=["todos"],
-                           hidden_modules=hidden)
+                           hidden_modules=hidden, local_ip=local_ip)
 
 
 @app.route("/settings/wifi/scan")
