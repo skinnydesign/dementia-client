@@ -19,7 +19,7 @@ templates/
   login.html    — unauthenticated login page (has WiFi setup link)
   wifi_setup.html — public WiFi scan/connect page
   dashboard.html — main kiosk display (todos, schedule, iCal panels)
-  index.html    — settings page (WiFi, account, display, screensaver)
+  index.html    — settings page (WiFi, account, display; screensaver hidden pending rework)
   widgets/
     todos.html    — incomplete todos widget (full-row tap to complete)
     schedule.html — due schedule items widget
@@ -163,6 +163,8 @@ The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly
 - Timed events show time (e.g. "27 Mar 14:30"); all-day events show date only
 
 ## Photo Screensaver
+**Currently hidden** — the Settings → Screensaver panel and nav item are commented out in `index.html` pending a rework. All backend routes and JS remain in place.
+
 - Activates after a configurable idle period (default 5 min) with no user interaction
 - Full-screen black overlay (`z-9985`, below alarm/alert/carer modal) with a two-layer crossfading slideshow
 - Photos served from `DATA_DIR/photos/` (`~/photos/` on Pi, `/data/photos/` in Docker)
@@ -172,7 +174,7 @@ The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly
 - Suppressed if the schedule alarm or alert popup is visible
 - Photo list re-fetched every 5 min so newly uploaded photos appear without a page reload
 - Settings stored in `localStorage`: `ssEnabled`, `ssIdleMs`, `ssSlideDurMs`
-- **Settings → Screensaver** panel: ON/OFF toggle, idle timeout selector, slide duration selector, upload drop zone, photo thumbnail grid with per-photo delete, and the local network URL (`url_for('settings', _external=True)`) for family to open on their phone
+- **Settings → Screensaver** panel: ON/OFF toggle, idle timeout selector, slide duration selector, upload drop zone, photo thumbnail grid with per-photo delete, and the machine's LAN IP URL for family to open on their phone
 
 ## Carer Visit System
 - Carer presses a button (fixed bottom-left in `base.html`) to check in/out

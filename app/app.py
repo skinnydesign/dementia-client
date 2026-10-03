@@ -176,6 +176,17 @@ def _use_nmcli() -> bool:
         return False
 
 
+def _nm_profile_exists(name: str) -> bool:
+    """True if NetworkManager already has a saved connection profile with this name."""
+    try:
+        r = subprocess.run(["sudo", "nmcli", "-t", "-f", "NAME", "con", "show"],
+                           capture_output=True, text=True, timeout=10)
+        names = [n.replace('\\:', ':') for n in r.stdout.splitlines()]
+        return name in names
+    except Exception:
+        return False
+
+
 def scan_wifi():
     OS = platform.system()
     networks = []
@@ -283,6 +294,7 @@ def connect_to_wifi(ssid, password=""):
     try:
         if OS == "Linux":
             if _use_nmcli():
+                had_profile = _nm_profile_exists(ssid)
                 # nmcli handles WPA handshake + DHCP + routing in one blocking call.
                 # It returns only after the connection is fully up (or fails).
                 cmd = ["sudo", "nmcli", "dev", "wifi", "connect", ssid,
@@ -290,9 +302,39 @@ def connect_to_wifi(ssid, password=""):
                 if password:
                     cmd += ["password", password]
                 r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                output = (r.stderr or r.stdout).strip()
+
+                # "802-11-wireless-security.key-mgmt: property is missing" — nmcli
+                # couldn't infer the security type (stale profile for this SSID, or
+                # the AP isn't in the current scan). Rebuild the profile explicitly.
+                if r.returncode != 0 and password and "key-mgmt" in output:
+                    subprocess.run(["sudo", "nmcli", "con", "delete", "id", ssid],
+                                   capture_output=True, timeout=10)
+                    had_profile = False
+                    add = subprocess.run(
+                        ["sudo", "nmcli", "con", "add", "type", "wifi",
+                         "ifname", WLAN_IFACE, "con-name", ssid, "ssid", ssid,
+                         "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password],
+                        capture_output=True, text=True, timeout=10
+                    )
+                    if add.returncode != 0:
+                        output = (add.stderr or add.stdout).strip()
+                        r = add
+                    else:
+                        r = subprocess.run(
+                            ["sudo", "nmcli", "-w", "25", "con", "up", "id", ssid],
+                            capture_output=True, text=True, timeout=30
+                        )
+                        output = (r.stderr or r.stdout).strip()
+
                 if r.returncode == 0:
                     return True, f"Connected to {ssid}"
-                output = (r.stderr or r.stdout).strip()
+
+                # Don't leave a half-configured profile behind — it causes the
+                # key-mgmt error on the next attempt.
+                if not had_profile:
+                    subprocess.run(["sudo", "nmcli", "con", "delete", "id", ssid],
+                                   capture_output=True, timeout=10)
                 if any(k in output.lower() for k in ("secret", "password", "psk")):
                     return False, "Wrong password — authentication failed"
                 return False, output or f"Could not connect to {ssid}"

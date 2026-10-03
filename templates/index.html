@@ -36,15 +36,7 @@
       <span>Display</span>
     </button>
 
-    <button onclick="showSection('screensaver')" id="nav-screensaver"
-            class="settings-nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-        <circle cx="8.5" cy="8.5" r="1.5"/>
-        <polyline points="21 15 16 10 5 21"/>
-      </svg>
-      <span>Screensaver</span>
-    </button>
+    {# Screensaver nav hidden — reworking this feature #}
 
   </nav>
 
@@ -271,8 +263,8 @@
       </div>
     </div>
 
-    <!-- ── Screensaver ─────────────────────────────────────────────────────── -->
-    <div id="section-screensaver" class="settings-section hidden max-w-2xl">
+    {# ── Screensaver hidden — reworking this feature ───────────────────────── #}
+    <div id="section-screensaver" class="settings-section hidden max-w-2xl" style="display:none!important">
       <div class="mb-6">
         <h2 class="font-mono text-sm tracking-widest text-[#e8e8e8]">SCREENSAVER</h2>
         <p class="text-[#666666] text-xs mt-0.5">Photo slideshow shown when the screen is idle</p>
@@ -415,7 +407,7 @@
 <script>
 // ── Section switching ────────────────────────────────────────────────────────
 
-const SECTIONS = ['wifi', 'account', 'display', 'screensaver'];
+const SECTIONS = ['wifi', 'account', 'display'];
 
 function showSection(name) {
   SECTIONS.forEach(s => {
