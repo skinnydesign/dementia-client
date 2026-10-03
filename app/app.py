@@ -17,6 +17,7 @@ from flask import (Flask, flash, jsonify, redirect, render_template,
                    request, send_from_directory, session, url_for)
 from functools import wraps
 
+import camera
 import db
 import sync
 
@@ -50,6 +51,7 @@ PHOTO_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
 
 db.init_db()
 sync.start()
+camera.start()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -611,6 +613,12 @@ def api_system_update():
     import threading
     threading.Thread(target=sync._do_update, daemon=True).start()
     return jsonify({"ok": True, "message": "Update started."})
+
+
+@app.route("/api/camera/state")
+@login_required
+def api_camera_state():
+    return jsonify(camera.get_live())
 
 
 @app.route("/api/carer/status")

@@ -1,5 +1,5 @@
 """
-Test configuration — sets up a temp SQLite DB and patches sync.start
+Test configuration — sets up a temp SQLite DB and patches sync.start/camera.start
 before any app code is imported, since app.py runs both at module level.
 """
 import os
@@ -16,6 +16,8 @@ os.environ["API_BASE_URL"] = "http://test-laravel/api"
 # Prevent the real background thread from starting during tests
 _sync_patcher = patch("sync.start")
 _sync_patcher.start()
+_camera_patcher = patch("camera.start")
+_camera_patcher.start()
 
 # ── Now safe to import ────────────────────────────────────────────────────────
 import pytest

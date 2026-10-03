@@ -340,3 +340,23 @@ def test_wifi_connect_requires_ssid(client):
                     content_type="application/json")
     assert r.status_code == 400
     assert r.get_json()["ok"] is False
+
+
+# ─────────────────────────────────────────────────────────────
+#  Camera
+# ─────────────────────────────────────────────────────────────
+
+def test_camera_state_requires_login(client):
+    r = client.get("/api/camera/state")
+    assert r.status_code == 302
+
+
+def test_camera_state_off_by_default(auth_client):
+    r = auth_client.get("/api/camera/state")
+    assert r.get_json() == {"live": False, "viewer": None}
+
+
+def test_camera_state_reports_viewer(auth_client):
+    db.set_state("camera_live", "Sarah")
+    r = auth_client.get("/api/camera/state")
+    assert r.get_json() == {"live": True, "viewer": "Sarah"}

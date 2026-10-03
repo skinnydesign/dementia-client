@@ -133,6 +133,14 @@
     </div>
   </div>
 
+  <!-- Camera on badge — shown while someone is watching the live camera -->
+  <div id="camera-badge" class="hidden fixed top-5 left-5 z-[9986] flex items-center gap-3 px-5 py-3 rounded-full
+                                bg-red-700 text-white font-sans text-lg font-bold shadow-lg"
+       role="status" aria-live="polite">
+    <span class="w-4 h-4 rounded-full bg-white" style="animation: alarmPulseIcon 2s ease-in-out infinite;"></span>
+    <span id="camera-badge-label">Camera on</span>
+  </div>
+
   <!-- Page content -->
   <div id="main-content" class="w-full h-full overflow-y-auto overflow-x-hidden">
     {% block content %}{% endblock %}
@@ -488,13 +496,35 @@
   document.getElementById('carer-name-input')
     .addEventListener('keydown', e => { if (e.key === 'Enter') carerCheckIn(); });
 
+  // ── Camera badge ────────────────────────────────────────────────────────────
+
+  async function checkCamera() {
+    const badge = document.getElementById('camera-badge');
+    try {
+      const r = await fetch('/api/camera/state', { headers: { 'Accept': 'application/json' } });
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data.live) {
+        document.getElementById('camera-badge-label').textContent =
+          data.viewer ? `Camera on — ${data.viewer} is checking in` : 'Camera on';
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    } catch (e) {
+      // Not logged in or offline — leave badge as-is
+    }
+  }
+
   // ── Init ────────────────────────────────────────────────────────────────────
 
   checkAlert();
   checkSchedule();
+  checkCamera();
   initCarerButton();
   setInterval(checkAlert,    60000);
   setInterval(checkSchedule, 60000);
+  setInterval(checkCamera,    5000);
 
 })();
 </script>

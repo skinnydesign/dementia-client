@@ -14,6 +14,7 @@ app/
   app.py        — single-file flat Flask app (all routes here)
   db.py         — SQLite operations: init, reads, writes, sync queue
   sync.py       — background thread: polls Laravel every 5 min, iCal every 30 min
+  camera.py     — background thread: streams Pi Camera to the Laravel MediaMTX relay on demand
 templates/
   base.html     — shared layout, settings cog (or back arrow on settings page) fixed bottom-right
   login.html    — unauthenticated login page (has WiFi setup link)
@@ -35,6 +36,7 @@ tests/
   test_db.py    — unit tests for all db.py functions
   test_routes.py — Flask route tests (auth, API endpoints, page rendering)
   test_sync.py  — sync pull/push logic tests (all HTTP calls mocked)
+  test_camera.py — camera status polling and start/stop logic (subprocess + HTTP mocked)
 data/           — persistent SQLite DB + photos/ subdirectory (git-ignored, survives container restarts)
 ```
 
@@ -54,7 +56,7 @@ data/           — persistent SQLite DB + photos/ subdirectory (git-ignored, su
 ## Entry Point
 - `app/app.py` — single-file flat Flask app (not blueprints)
 - Gunicorn runs `app:app` from the `/app` workdir
-- On startup: `db.init_db()` creates tables, `sync.start()` launches background thread
+- On startup: `db.init_db()` creates tables, `sync.start()` launches background thread, `camera.start()` launches the camera thread
 
 ## Auth
 - Login via `POST /api/token` (Sanctum) with `{email, password}` **or** `{username, password}`
@@ -117,6 +119,7 @@ Key functions:
 | `GET /api/wifi/scan` | public | Scan WiFi networks (Pi only, fails gracefully in Docker) |
 | `POST /api/wifi/connect` | public | Connect to WiFi — **blocking**, returns only when fully connected or failed |
 | `GET /api/wifi/verify` | public | Check if the configured API URL is reachable (used post-connect) |
+| `GET /api/camera/state` | required | `{live, viewer}` — drives the kiosk "Camera on" badge |
 | `GET /api/carer/status` | required | Returns active carer visit or null |
 | `POST /api/carer/arrive` | required | Record carer arrival (name required) |
 | `POST /api/carer/leave` | required | Record carer departure |
@@ -137,6 +140,7 @@ Key functions:
 | Fetch alert | `GET /api/alert` | Returns active alert or empty |
 | Fetch layout | `GET /api/layout` | Module visibility settings |
 | Fetch iCal settings | `GET /api/ical` | Returns ical_url, ical_days |
+| Camera status | `GET /api/camera/status` | Polled every 5s — `{requested, viewer_name, publish_url}` |
 
 ## Schedule System
 Schedule items have: `name`, `frequency` (daily/every_other_day/weekly), `day_of_week` (weekly only), `scheduled_time`, `last_completed_at`, `is_active`, `overdue_threshold` (nullable int, minutes after due time to flag as overdue).
@@ -176,6 +180,16 @@ The `is_due()` logic in `db.py` replicates Laravel's `Schedule::isDue()` exactly
 - Settings stored in `localStorage`: `ssEnabled`, `ssIdleMs`, `ssSlideDurMs`
 - **Settings → Screensaver** panel: ON/OFF toggle, idle timeout selector, slide duration selector, upload drop zone, photo thumbnail grid with per-photo delete, and the machine's LAN IP URL for family to open on their phone
 
+## Live Camera
+Pi Camera Module (CSI ribbon) streams to a MediaMTX relay in the Laravel docker stack, **only while someone has the Laravel `/camera` page open**.
+- Laravel viewer page heartbeats every 10s → cache key `camera_requested:{resident_id}` (30s TTL) + `camera_views` log
+- `camera.py` polls `GET /api/camera/status` every 5s; when requested, runs `rpicam-vid` (H.264 720p/15fps) piped into `ffmpeg -c copy` to the short-lived `rtsps://` publish URL Laravel returns; stops when no longer requested or offline
+- Only one gunicorn worker owns the camera — `fcntl` lock on `$DATA_DIR/camera.lock`
+- Current viewer stored in `sync_state` as `camera_live`; `base.html` polls `/api/camera/state` every 5s and shows a red "Camera on — {name} is checking in" badge (z-9986, above screensaver)
+- No `rpicam-vid`/`libcamera-vid` on the host (Docker/Mac) → thread doesn't start; graceful failure
+- Camera is an **opt-in** module in Laravel (off unless enabled in Modules)
+- Pi install: `rpicam-apps ffmpeg`, user in `video` group (done by `setup.sh`); check with `rpicam-hello --list-cameras`
+
 ## Carer Visit System
 - Carer presses a button (fixed bottom-left in `base.html`) to check in/out
 - Check-in shows a modal to enter their name; check-out confirms departure
@@ -192,7 +206,7 @@ The UI is designed for users with dementia and age-related sight impairment:
 - **Settings page**: bottom-right button shows a back arrow (→ `/dashboard`) when on settings, gear icon on all other pages
 
 ## Testing
-Run the full test suite (92 tests, ~0.7s) from the project root:
+Run the full test suite (104 tests) from the project root:
 ```bash
 python3 -m pytest
 ```

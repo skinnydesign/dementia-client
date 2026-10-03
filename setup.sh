@@ -98,6 +98,23 @@ else
 fi
 ok "Dependencies installed (chromium: $CHROMIUM_BIN)"
 
+# ─── Camera ───────────────────────────────────────────────────────────────────
+
+step "Installing camera tools..."
+# rpicam-apps on Bookworm; Bullseye ships the older libcamera-apps
+if apt-cache show rpicam-apps &>/dev/null; then
+    apt-get install -y -qq rpicam-apps ffmpeg
+else
+    apt-get install -y -qq libcamera-apps ffmpeg
+fi
+usermod -aG video "$REAL_USER"
+CAM_LIST=$( (rpicam-hello --list-cameras || libcamera-hello --list-cameras) 2>&1 || true)
+if echo "$CAM_LIST" | grep -q "Available cameras"; then
+    ok "Camera detected"
+else
+    echo -e "  ${AMBER}!${NC} No camera detected — check the ribbon cable (live view will be disabled)"
+fi
+
 # ─── App install ──────────────────────────────────────────────────────────────
 
 step "Installing application..."
