@@ -123,6 +123,18 @@
   window.oskShow = showKeyboard;
   window.oskHide = hideKeyboard;
 
+  // Some Pi touchscreens (labwc/Wayland) deliver a tap as both a touch and an
+  // emulated mouse click, so ignore any key press that follows the last one too closely.
+  var lastPress = 0;
+  function onPress(btn, handler) {
+    btn.addEventListener('click', function (e) {
+      var now = Date.now();
+      if (now - lastPress < 120) return;
+      lastPress = now;
+      handler(e);
+    });
+  }
+
   // Attach to every [data-osk] input on the page
   document.querySelectorAll('input[data-osk]').forEach(function (inp) {
     inp.addEventListener('focus', function () { showKeyboard(inp); });
@@ -133,7 +145,7 @@
   });
 
   // Shift
-  shiftBtn.addEventListener('click', function () {
+  onPress(shiftBtn, function () {
     shifted = !shifted;
     shiftBtn.classList.toggle('active', shifted);
     document.querySelectorAll('.osk-key[data-char]').forEach(function (btn) {
@@ -145,14 +157,14 @@
   });
 
   // Backspace
-  backBtn.addEventListener('click', function () {
+  onPress(backBtn, function () {
     if (!activeInput) return;
     activeInput.value = activeInput.value.slice(0, -1);
   });
 
   // Character keys
   document.querySelectorAll('.osk-key[data-char]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+    onPress(btn, function () {
       if (!activeInput) return;
       var ch = btn.getAttribute('data-char');
       if (shifted && ch.match(/[a-z]/i)) {
@@ -169,7 +181,7 @@
   });
 
   // Done button — behaviour driven by data attributes on the active input
-  doneBtn.addEventListener('click', function () {
+  onPress(doneBtn, function () {
     if (!activeInput) { hideKeyboard(); return; }
     var nextSel  = activeInput.getAttribute('data-osk-next');
     var doSubmit = activeInput.getAttribute('data-osk-submit') === 'true';
