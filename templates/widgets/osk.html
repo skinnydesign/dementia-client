@@ -6,11 +6,10 @@
 #}
 
 <!-- On-screen keyboard -->
-<div id="osk" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
-     background:#1a1a1a; border-top:1px solid #333; padding:10px 8px 14px; user-select:none;">
+<div id="osk" style="display:none;">
   <div id="osk-letters">
     <!-- Numbers row -->
-    <div class="osk-row" style="display:flex; gap:5px; margin-bottom:5px; justify-content:center;">
+    <div class="osk-row osk-row-num">
       <button type="button" class="osk-key osk-num" data-char="1">1</button>
       <button type="button" class="osk-key osk-num" data-char="2">2</button>
       <button type="button" class="osk-key osk-num" data-char="3">3</button>
@@ -23,7 +22,7 @@
       <button type="button" class="osk-key osk-num" data-char="0">0</button>
     </div>
     <!-- Row 1 -->
-    <div class="osk-row" style="display:flex; gap:5px; margin-bottom:5px; justify-content:center;">
+    <div class="osk-row">
       <button type="button" class="osk-key" data-char="q">q</button>
       <button type="button" class="osk-key" data-char="w">w</button>
       <button type="button" class="osk-key" data-char="e">e</button>
@@ -35,8 +34,8 @@
       <button type="button" class="osk-key" data-char="o">o</button>
       <button type="button" class="osk-key" data-char="p">p</button>
     </div>
-    <!-- Row 2 -->
-    <div class="osk-row" style="display:flex; gap:5px; margin-bottom:5px; justify-content:center;">
+    <!-- Row 2 (indented half a key) -->
+    <div class="osk-row osk-row-indent">
       <button type="button" class="osk-key" data-char="a">a</button>
       <button type="button" class="osk-key" data-char="s">s</button>
       <button type="button" class="osk-key" data-char="d">d</button>
@@ -48,8 +47,8 @@
       <button type="button" class="osk-key" data-char="l">l</button>
     </div>
     <!-- Row 3 -->
-    <div class="osk-row" style="display:flex; gap:5px; margin-bottom:5px; justify-content:center;">
-      <button type="button" class="osk-key osk-action" id="osk-shift" style="min-width:52px;">⇧</button>
+    <div class="osk-row">
+      <button type="button" class="osk-key osk-action osk-wide" id="osk-shift">⇧</button>
       <button type="button" class="osk-key" data-char="z">z</button>
       <button type="button" class="osk-key" data-char="x">x</button>
       <button type="button" class="osk-key" data-char="c">c</button>
@@ -57,46 +56,70 @@
       <button type="button" class="osk-key" data-char="b">b</button>
       <button type="button" class="osk-key" data-char="n">n</button>
       <button type="button" class="osk-key" data-char="m">m</button>
-      <button type="button" class="osk-key osk-action" id="osk-back" style="min-width:52px;">⌫</button>
+      <button type="button" class="osk-key osk-action osk-wide" id="osk-back">⌫</button>
     </div>
     <!-- Row 4: symbols + space + done -->
-    <div class="osk-row" style="display:flex; gap:5px; justify-content:center;">
+    <div class="osk-row">
       <button type="button" class="osk-key osk-sym" data-char="@">@</button>
       <button type="button" class="osk-key osk-sym" data-char=".">.</button>
       <button type="button" class="osk-key osk-sym" data-char="-">-</button>
       <button type="button" class="osk-key osk-sym" data-char="_">_</button>
       <button type="button" class="osk-key osk-sym" data-char="!">!</button>
       <button type="button" class="osk-key osk-sym" data-char="#">#</button>
-      <button type="button" class="osk-key" data-char=" " style="flex:1; max-width:140px;">space</button>
-      <button type="button" class="osk-key osk-done" id="osk-done" style="min-width:64px; background:#d97706; color:#000;">done</button>
+      <button type="button" class="osk-key osk-space" data-char=" ">space</button>
+      <button type="button" class="osk-key osk-done" id="osk-done">done</button>
     </div>
   </div>
 </div>
 
 <style>
+#osk {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: #1a1a1a;
+  border-top: 1px solid #333;
+  padding: 10px 8px 14px;
+  user-select: none;
+  --osk-h: clamp(56px, 10vh, 84px);
+}
+.osk-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.osk-row:last-child { margin-bottom: 0; }
+.osk-row-indent { padding: 0 calc((100% - 54px) / 20); }
 .osk-key {
-  min-width: 36px;
-  height: 46px;
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--osk-h);
   background: #2a2a2a;
   border: 1px solid #3a3a3a;
-  border-radius: 6px;
+  border-radius: 8px;
   color: #e8e6e3;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 16px;
+  font-size: clamp(20px, 3.2vh, 28px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
+  padding: 0;
   transition: background 0.08s;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.osk-key:active { background: #3d3d3d; }
+.osk-key:active    { background: #555; border-color: #777; }
 .osk-key.osk-action { background: #333; color: #aaa; }
-.osk-key.osk-sym   { color: #f59e0b; min-width: 36px; }
-.osk-key.osk-num   { color: #aaa; font-size: 14px; }
+.osk-key.osk-sym   { color: #f59e0b; }
+.osk-key.osk-num   { color: #aaa; height: calc(var(--osk-h) * 0.85); font-size: clamp(18px, 2.8vh, 24px); }
+.osk-key.osk-wide  { flex-grow: 1.5; }
+.osk-key.osk-space { flex-grow: 4; font-size: clamp(16px, 2.6vh, 22px); }
+.osk-key.osk-done  { flex-grow: 2; background: #d97706; color: #000; font-size: clamp(16px, 2.6vh, 22px); }
+.osk-key.osk-done:active { background: #f59e0b; }
 #osk-shift.active  { background: #d97706; color: #000; }
 </style>
 
@@ -112,10 +135,14 @@
   function showKeyboard(inp) {
     activeInput = inp;
     osk.style.display = 'block';
+    // Pad the page so the focused input can scroll clear of the keyboard
+    document.body.style.paddingBottom = osk.offsetHeight + 'px';
+    inp.scrollIntoView({ block: 'center' });
   }
 
   function hideKeyboard() {
     osk.style.display = 'none';
+    document.body.style.paddingBottom = '';
     if (activeInput) activeInput.blur();
     activeInput = null;
   }
