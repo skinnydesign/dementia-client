@@ -49,7 +49,8 @@ def test_fetch_status_none_on_network_error():
 
 
 def test_tick_starts_stream_when_requested():
-    s = _streamer(running=False)
+    s = _streamer()
+    s.running.side_effect = [False, True]  # not running, then running after start
     payload = {"requested": True, "viewer_name": "Sarah", "publish_url": "rtsp://x/resident-1"}
     with patch("camera._fetch_status", return_value=payload):
         camera._tick(s)
@@ -98,3 +99,82 @@ def test_start_disabled_without_camera_binary(tmp_path):
          patch("camera.threading.Thread") as thread:
         _camera_patcher.temp_original()
     thread.assert_not_called()
+
+
+def test_tick_hides_badge_when_pipeline_fails_to_start():
+    db.set_state("camera_live", "Sarah")
+    s = _streamer(running=False)
+    payload = {"requested": True, "viewer_name": "Sarah", "publish_url": "rtsp://x/resident-1"}
+    with patch("camera._fetch_status", return_value=payload):
+        camera._tick(s)
+    s.start.assert_called_once()
+    assert camera.get_live() == {"live": False, "viewer": None}
+
+
+def test_tick_waits_while_backing_off():
+    s = _streamer(running=False)
+    s.can_start.return_value = False
+    payload = {"requested": True, "viewer_name": "Sarah", "publish_url": "rtsp://x/resident-1"}
+    with patch("camera._fetch_status", return_value=payload):
+        camera._tick(s)
+    s.start.assert_not_called()
+    assert camera.get_live()["live"] is False
+
+
+def test_backoff_doubles_on_quick_failures_and_caps():
+    s = camera.Streamer()
+    with patch("camera.time.monotonic") as now:
+        now.return_value = 100.0
+        assert s.can_start()                     # never started
+        waits = []
+        for _ in range(6):
+            s.started_at = now.return_value      # started, then died straight away
+            assert not s.can_start()
+            waits.append(s.backoff)
+            now.return_value += s.backoff
+            assert s.can_start()
+    assert waits == [5, 10, 20, 40, 60, 60]
+
+
+def test_backoff_resets_after_stable_stream():
+    s = camera.Streamer()
+    s.backoff = 40
+    with patch("camera.time.monotonic", return_value=1000.0):
+        s.started_at = 1000.0 - camera.STABLE_AFTER - 1
+        assert s.can_start()
+    assert s.backoff == 0
+
+
+def test_watch_logs_unexpected_exit(caplog):
+    proc = MagicMock()
+    proc.stderr = [b"Connection refused\n"]
+    proc.wait.return_value = 1
+    del proc.stopped
+    with patch("camera.threading.Thread") as thread:
+        camera._watch(proc, "ffmpeg")
+    thread.call_args[1]["target"]()
+    assert "ffmpeg exited (code 1): Connection refused" in caplog.text
+
+
+def test_watch_quiet_when_stopped_on_purpose(caplog):
+    proc = MagicMock()
+    proc.stderr = []
+    proc.stopped = True
+    with patch("camera.threading.Thread") as thread:
+        camera._watch(proc, "ffmpeg")
+    thread.call_args[1]["target"]()
+    assert "exited" not in caplog.text
+
+
+def test_backoff_survives_restart():
+    procs = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
+    s = camera.Streamer()
+    with patch("camera._camera_binary", return_value="/usr/bin/rpicam-vid"), \
+         patch("camera._watch"), \
+         patch("camera.subprocess.Popen", side_effect=procs), \
+         patch("camera.time.monotonic", return_value=100.0):
+        s.start("rtsp://x/resident-1")
+        assert not s.can_start()                 # died straight away
+        s.start("rtsp://x/resident-1")
+        assert not s.can_start()
+    assert s.backoff == 10

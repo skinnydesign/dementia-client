@@ -10,6 +10,7 @@ gunicorn worker can show the kiosk's "Camera on" badge.
 
 from __future__ import annotations
 
+import collections
 import fcntl
 import logging
 import os
@@ -26,6 +27,8 @@ import db
 log = logging.getLogger(__name__)
 
 POLL_INTERVAL = 5   # seconds between Laravel status checks
+MAX_BACKOFF   = 60  # longest wait before restarting a pipeline that keeps dying
+STABLE_AFTER  = 30  # a stream that lasted this long resets the backoff
 
 WIDTH, HEIGHT, FPS = 1280, 720, 15
 
@@ -73,9 +76,26 @@ class Streamer:
     """Owns the rpicam-vid | ffmpeg pipeline."""
 
     def __init__(self):
-        self.cam    = None
-        self.ffmpeg = None
-        self.url    = None
+        self.cam        = None
+        self.ffmpeg     = None
+        self.url        = None
+        self.started_at = None
+        self.backoff    = 0
+        self.retry_at   = 0.0
+
+    def can_start(self) -> bool:
+        """False while backing off from a pipeline that died soon after starting."""
+        if self.started_at is not None:
+            # Previous run died — back off if it didn't last long
+            if time.monotonic() - self.started_at < STABLE_AFTER:
+                self.backoff = min(max(self.backoff * 2, POLL_INTERVAL), MAX_BACKOFF)
+            else:
+                self.backoff = 0
+            self.retry_at   = time.monotonic() + self.backoff
+            self.started_at = None
+            if self.backoff:
+                log.warning("Camera stream died — retrying in %ss.", self.backoff)
+        return time.monotonic() >= self.retry_at
 
     def running(self) -> bool:
         return (self.cam is not None and self.cam.poll() is None
@@ -94,17 +114,21 @@ class Streamer:
             "-c", "copy", "-rtsp_transport", "tcp", "-f", "rtsp", url,
         ]
         self.cam = subprocess.Popen(cam_cmd, stdout=subprocess.PIPE,
-                                    stderr=subprocess.DEVNULL, start_new_session=True)
+                                    stderr=subprocess.PIPE, start_new_session=True)
         self.ffmpeg = subprocess.Popen(ff_cmd, stdin=self.cam.stdout,
-                                       stderr=subprocess.DEVNULL, start_new_session=True)
+                                       stderr=subprocess.PIPE, start_new_session=True)
         self.cam.stdout.close()  # ffmpeg owns the pipe now
+        _watch(self.cam, "rpicam-vid")
+        _watch(self.ffmpeg, "ffmpeg")
         self.url = url
+        self.started_at = time.monotonic()
         log.info("Camera stream started.")
 
     def stop(self) -> None:
         for proc in (self.ffmpeg, self.cam):
             if proc is None or proc.poll() is not None:
                 continue
+            proc.stopped = True  # tells _watch not to report this exit
             try:
                 os.killpg(proc.pid, _signal.SIGTERM)
                 proc.wait(timeout=5)
@@ -115,7 +139,19 @@ class Streamer:
                     pass
         if self.cam or self.ffmpeg:
             log.info("Camera stream stopped.")
-        self.cam = self.ffmpeg = self.url = None
+        self.cam = self.ffmpeg = self.url = self.started_at = None
+
+
+def _watch(proc, name: str) -> None:
+    """Drain a process's stderr and log its last lines if it exits unexpectedly."""
+    def run():
+        tail = collections.deque(maxlen=5)
+        for line in proc.stderr:
+            tail.append(line.decode(errors="replace").rstrip())
+        code = proc.wait()
+        if not getattr(proc, "stopped", False):
+            log.warning("%s exited (code %s): %s", name, code, " | ".join(tail) or "no output")
+    threading.Thread(target=run, daemon=True, name=f"camera-{name}").start()
 
 
 def _loop() -> None:
@@ -132,10 +168,14 @@ def _tick(streamer: Streamer) -> None:
     status = _fetch_status()
 
     if status and status.get("requested") and status.get("publish_url"):
-        if not streamer.running():
+        if not streamer.running() and streamer.can_start():
             # Not yet started, or the pipeline died — (re)start with a fresh URL
             streamer.start(status["publish_url"])
-        db.set_state("camera_live", status.get("viewer_name") or "Someone")
+        # Only show the kiosk badge while frames are actually being sent
+        if streamer.running():
+            db.set_state("camera_live", status.get("viewer_name") or "Someone")
+        else:
+            db.set_state("camera_live", None)
     else:
         # Offline or no viewer — never stream without Laravel's say-so
         streamer.stop()
