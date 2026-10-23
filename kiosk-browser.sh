@@ -63,7 +63,8 @@ if [ "$CHOICE" = "cog" ]; then
     # GStreamer plugins are needed for Web Audio (the schedule alarm chime)
     apt-get install -y -qq cog gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-alsa
     ok "Cog installed"
-    LAUNCH="COG_PLATFORM_WL_VIEW_FULLSCREEN=1 cog --platform=wl ${URL} &"
+    # Software GL — cog's Wayland EGL path aborts on the Pi (wpe_view_data.buffer assertion)
+    LAUNCH="LIBGL_ALWAYS_SOFTWARE=1 COG_PLATFORM_WL_VIEW_FULLSCREEN=1 cog --platform=wl ${URL} &"
 else
     if command -v chromium &>/dev/null; then
         CHROMIUM_BIN="chromium"
