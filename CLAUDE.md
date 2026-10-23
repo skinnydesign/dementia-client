@@ -29,6 +29,8 @@ templates/
 static/
   css/
     style.css   — custom animations (alarmPulseIcon) and screensaver layer styles
+    tailwind.css — compiled Tailwind output (committed; rebuild with ./build-css.sh)
+    tailwind.src.css — Tailwind source (@tailwind directives)
     fonts.css   — @font-face declarations for Atkinson Hyperlegible, DM Sans, JetBrains Mono
   fonts/        — self-hosted font files (Atkinson Hyperlegible, DM Sans, JetBrains Mono)
 tests/
@@ -37,6 +39,9 @@ tests/
   test_routes.py — Flask route tests (auth, API endpoints, page rendering)
   test_sync.py  — sync pull/push logic tests (all HTTP calls mocked)
   test_camera.py — camera status polling and start/stop logic (subprocess + HTTP mocked)
+tailwind.config.js — Tailwind v3 theme (fonts, CSS-var colours) + content globs
+build-css.sh    — downloads the Tailwind v3.4.17 standalone CLI to bin/ and compiles static/css/tailwind.css
+kiosk-browser.sh — Pi only: `sudo ./kiosk-browser.sh cog|chromium|status` switches the labwc kiosk browser
 data/           — persistent SQLite DB + photos/ subdirectory (git-ignored, survives container restarts)
 ```
 
@@ -206,7 +211,7 @@ The UI is designed for users with dementia and age-related sight impairment:
 - **Settings page**: bottom-right button shows a back arrow (→ `/dashboard`) when on settings, gear icon on all other pages
 
 ## Testing
-Run the full test suite (104 tests) from the project root:
+Run the full test suite (113 tests) from the project root:
 ```bash
 python3 -m pytest
 ```
@@ -217,6 +222,11 @@ python3 -m pytest
 
 Tests run against the host Python (3.9+). The `from __future__ import annotations` import in `db.py` ensures type hints are compatible with Python 3.9.
 
+## Tailwind CSS
+- Tailwind is **precompiled** — no in-browser Play CDN. `base.html` links `static/css/tailwind.css` after `style.css` (same cascade order the Play CDN had)
+- After adding or changing Tailwind classes in templates/JS, run `./build-css.sh` (or `./build-css.sh --watch` while developing) and commit `static/css/tailwind.css` — the Pi has no build step
+- Class names must appear as complete literals in templates/JS (no `bg-${colour}-500` interpolation) or the build won't include them
+
 ## Raspberry Pi Deployment (`setup.sh`)
 - Run once on a fresh Raspberry Pi OS (Bookworm) install: `sudo bash setup.sh`
 - Prompts for `API_BASE_URL` and optional `SECRET_KEY` (auto-generated if blank)
@@ -224,7 +234,8 @@ Tests run against the host Python (3.9+). The `from __future__ import annotation
 - Detects `chromium` vs `chromium-browser` package name (Bookworm vs Bullseye)
 - Clones repo to `~/dementia-client`, creates venv, installs requirements
 - Writes `.env`, creates systemd service (`dementia-client`), enables auto-login
-- **Kiosk autostart (Bookworm/labwc)**: writes `~/.config/labwc/autostart` — a bash script that runs `chromium --kiosk http://localhost:8000 &` after a 5s delay
+- **Kiosk autostart (Bookworm/labwc)**: calls `kiosk-browser.sh` to write `~/.config/labwc/autostart` — runs `chromium --kiosk http://localhost:8000 &` after a 5s delay by default; `sudo KIOSK_BROWSER=cog bash setup.sh` uses Cog (WPE WebKit, lower memory) instead
+- **Switching browser later**: `sudo ./kiosk-browser.sh cog` or `sudo ./kiosk-browser.sh chromium`, then reboot. Choice recorded in `~/.config/dementia-kiosk-browser`. Cog installs GStreamer plugins for the Web Audio alarm chime
 - **Kiosk autostart (Bullseye/LXDE)**: writes `/etc/xdg/lxsession/LXDE-pi/autostart`
 - Disables screen blanking via `consoleblank=0` in `/boot/firmware/cmdline.txt`
 - WiFi is configured through the in-app `/wifi-setup` page — do not use FullPageOS or other kiosk OSes as they require WiFi to be pre-configured before deployment

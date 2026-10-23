@@ -66,6 +66,12 @@ Or if you've already cloned the repo:
 sudo bash setup.sh
 ```
 
+To use the lighter **Cog** browser instead of Chromium (see [Kiosk Browser](#kiosk-browser-chromium-or-cog)):
+
+```bash
+sudo KIOSK_BROWSER=cog bash setup.sh
+```
+
 The script will ask for your `API_BASE_URL` and `SECRET_KEY`, then handle everything:
 
 - Installs all system dependencies
@@ -74,7 +80,7 @@ The script will ask for your `API_BASE_URL` and `SECRET_KEY`, then handle everyt
 - Configures passwordless sudo for WiFi commands
 - Creates and enables the systemd service
 - Enables desktop auto-login
-- Configures Chromium in kiosk mode to launch on boot
+- Configures the kiosk browser (Chromium by default, or Cog) to launch on boot
 - Disables screen blanking
 
 When it finishes, reboot:
@@ -84,6 +90,40 @@ sudo reboot
 ```
 
 The Pi will boot straight into the kiosk display.
+
+### Kiosk Browser (Chromium or Cog)
+
+The display can run in either of two browsers. Both open full screen with no address bar or tabs.
+
+| Browser | Memory | Notes |
+|---|---|---|
+| **Chromium** (default) | Higher (~300–500MB) | The original, well-tested setup |
+| **Cog** (WPE WebKit) | Roughly half of Chromium | Made for embedded kiosk screens; lets cheaper low-RAM Pis (e.g. Pi 5 1GB) run the display |
+
+Switch between them at any time on the Pi (Raspberry Pi OS Bookworm or later):
+
+```bash
+cd ~/dementia-client
+git pull
+
+sudo ./kiosk-browser.sh cog        # switch to Cog (installs it on first use)
+sudo ./kiosk-browser.sh chromium   # switch back to Chromium
+sudo ./kiosk-browser.sh status     # show which browser is configured
+
+sudo reboot                        # the change applies after a reboot
+```
+
+The script rewrites `~/.config/labwc/autostart` and records the choice in `~/.config/dementia-kiosk-browser`. Switching back is instant because Cog stays installed.
+
+**Checklist when trying Cog:**
+
+- [ ] **Alarm chime plays.** This is the most important check. Make a schedule item due and listen for the sound. Cog uses GStreamer for audio, and the script installs the plugins it needs.
+- [ ] **Opens full screen** with no window border. If it opens in a window, note the output of `cog --version`.
+- [ ] **Touch works** on todo rows, buttons and the on-screen keyboard.
+- [ ] **Alert banner, camera badge and carer button** appear as normal.
+- [ ] **Memory use** is lower: compare `free -m` under each browser.
+
+If anything on the checklist fails, run `sudo ./kiosk-browser.sh chromium` and reboot.
 
 ### Cloning for multiple devices
 
@@ -126,8 +166,10 @@ dementia-client/
 │   └── sync.py         # Background sync from Laravel (every 5 min)
 ├── static/
 │   ├── css/
-│   │   ├── style.css   # Animations and scrollbar only (layout is Tailwind)
-│   │   └── fonts.css   # @font-face declarations
+│   │   ├── style.css         # Animations and theme overrides (layout is Tailwind)
+│   │   ├── tailwind.src.css  # Tailwind source (@tailwind directives)
+│   │   ├── tailwind.css      # Compiled Tailwind output — committed, built by build-css.sh
+│   │   └── fonts.css         # @font-face declarations
 │   ├── fonts/          # Self-hosted font files (Atkinson Hyperlegible, DM Sans, JetBrains Mono)
 │   └── js/app.js       # Flash message auto-dismiss
 ├── templates/
@@ -147,11 +189,32 @@ dementia-client/
 │   ├── test_routes.py  # Flask route tests
 │   └── test_sync.py    # Sync logic tests
 ├── data/               # SQLite database (git-ignored)
+├── tailwind.config.js  # Tailwind theme (fonts, colours) and files to scan for classes
+├── build-css.sh        # Builds static/css/tailwind.css
+├── kiosk-browser.sh    # Pi only: switch kiosk browser between Chromium and Cog
+├── setup.sh            # Raspberry Pi installer
 ├── docker-compose.yml
 ├── Dockerfile
 ├── pytest.ini
 └── requirements.txt
 ```
+
+---
+
+## Styling (Tailwind CSS)
+
+Tailwind is compiled **once** into `static/css/tailwind.css`, which is committed to the repo. The browser just loads a small static stylesheet; nothing is compiled on the device and no CDN is used. The Pi doesn't need Node or any build step: `git pull` brings the updated CSS.
+
+After adding or changing Tailwind classes in a template or JS file, rebuild and commit the CSS:
+
+```bash
+./build-css.sh           # one-off build
+./build-css.sh --watch   # rebuild automatically while you work
+```
+
+The first run downloads the Tailwind v3.4.17 standalone CLI into `bin/` (git-ignored). It needs no Node.js and works on macOS and Linux, on both Intel and ARM. Theme settings (fonts, colours) live in `tailwind.config.js`.
+
+> **Note:** Write class names out in full, e.g. `bg-amber-500`. Tailwind only includes classes it can find as complete words in the templates and JS, so a class built in code like `` `bg-${colour}-500` `` will be missing from the CSS.
 
 ---
 
@@ -177,7 +240,7 @@ The WiFi setup page is available at `/wifi-setup` **without logging in**, so use
 
 ## Testing
 
-A full test suite (91 tests) covers the database layer, all Flask routes, and the background sync logic. Tests run against a temporary SQLite database with all HTTP calls mocked — no Laravel server needed.
+A full test suite (113 tests) covers the database layer, all Flask routes, and the background sync logic. Tests run against a temporary SQLite database with all HTTP calls mocked — no Laravel server needed.
 
 ```bash
 pip install pytest

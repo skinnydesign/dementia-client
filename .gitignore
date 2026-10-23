@@ -32,3 +32,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Tailwind standalone CLI (downloaded by build-css.sh)
+bin/

@@ -2,6 +2,7 @@
 # ─── Dementia Client — Raspberry Pi Setup ────────────────────────────────────
 # Run on a fresh Raspberry Pi OS (with Desktop) installation.
 # Usage: sudo bash setup.sh
+#        sudo KIOSK_BROWSER=cog bash setup.sh   (use the lighter Cog browser; switch later with kiosk-browser.sh)
 
 set -e
 
@@ -194,13 +195,9 @@ ok "Auto-login enabled"
 step "Configuring kiosk autostart..."
 
 if grep -qi "bookworm" /etc/os-release 2>/dev/null; then
-    # Bookworm / labwc (Wayland) — use labwc autostart file
-    LABWC_DIR="${REAL_HOME}/.config/labwc"
-    mkdir -p "$LABWC_DIR"
-    printf '#!/bin/bash\nsleep 5\n%s --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --password-store=basic http://localhost:8000 &\n' "${CHROMIUM_BIN}" > "${LABWC_DIR}/autostart"
-    chmod +x "${LABWC_DIR}/autostart"
-    chown -R "${REAL_USER}:${REAL_USER}" "$LABWC_DIR"
-    ok "Kiosk autostart configured (labwc/Bookworm)"
+    # Bookworm / labwc (Wayland) — kiosk-browser.sh writes the labwc autostart file.
+    # Default is Chromium; run with KIOSK_BROWSER=cog for the lighter WPE WebKit browser.
+    bash "${INSTALL_DIR}/kiosk-browser.sh" "${KIOSK_BROWSER:-chromium}"
 else
     # Bullseye / LXDE (X11)
     AUTOSTART_DIR="/etc/xdg/lxsession/LXDE-pi"

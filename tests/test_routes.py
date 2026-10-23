@@ -31,6 +31,18 @@ def test_login_page_renders(client):
     assert b"login" in r.data.lower()
 
 
+def test_pages_use_precompiled_tailwind(client):
+    r = client.get("/login")
+    assert b"css/tailwind.css" in r.data
+    assert b"tailwind.min.js" not in r.data
+
+
+def test_precompiled_tailwind_css_is_served(client):
+    r = client.get("/static/css/tailwind.css")
+    assert r.status_code == 200
+    assert b".bg-surface" in r.data
+
+
 def test_protected_route_redirects_unauthenticated(client):
     for path in ["/dashboard", "/settings", "/api/todos", "/api/schedule/due",
                  "/api/alert", "/api/ical", "/api/carer/status"]:

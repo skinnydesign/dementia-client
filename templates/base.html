@@ -38,30 +38,7 @@
     }
   })();
 </script>
-<script src="{{ url_for('static', filename='js/tailwind.min.js') }}"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: {
-          mono: ['"JetBrains Mono"', 'monospace'],
-          sans: ['"Atkinson Hyperlegible"', '"DM Sans"', 'sans-serif'],
-        },
-        colors: {
-          surface:  'var(--c-surface)',
-          panel:    'var(--c-panel)',
-          raised:   'var(--c-raised)',
-          hovered:  'var(--c-hovered)',
-          lit:      'var(--c-lit)',
-        },
-        borderColor: {
-          DEFAULT: 'var(--c-border)',
-          lit:     'var(--c-border-lit)',
-        }
-      }
-    }
-  }
-</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
 </head>
 <body class="bg-surface text-[#E8E6E3] font-sans font-semibold text-[1rem] leading-relaxed tracking-[0.02em] overflow-hidden w-full h-full">
 
